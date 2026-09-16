@@ -1,0 +1,41 @@
+# ==============================================================================
+# default_props.txt - Universal Project Treble GSI System Properties
+# ==============================================================================
+
+# Core Project Treble compatibility
+ro.treble.enabled=true
+persist.sys.phh.no_stock_apps=true
+persist.sys.usb.config=mtp,adb
+
+# Disable AVB & Verity checks
+ro.config.dmverity=false
+
+# Media & Codec Generic Fallbacks
+debug.stagefright.ccodec=0
+media.stagefright.less-secure=true
+
+# Generic Dalvik Heap Configuration for Universal Device RAM
+dalvik.vm.heapstartsize=8m
+dalvik.vm.heapgrowthlimit=192m
+dalvik.vm.heapsize=512m
+dalvik.vm.heaptargetutilization=0.75
+dalvik.vm.heapminfree=512k
+dalvik.vm.heapmaxfree=8m
+
+# Hardware acceleration & Rendering
+debug.sf.disable_backpressure=1
+debug.sf.latch_unsignaled=1
+ro.surface_flinger.has_wide_color_display=false
+ro.surface_flinger.has_HDR_display=false
+
+# Telephony & Radio Generic Configuration
+ro.telephony.default_network=9,9
+telephony.lteOnCdmaDevice=1
+
+# Bluetooth Audio Generic Fallback
+persist.bluetooth.enablenq=false
+persist.bluetooth.btsnooplogmode=disabled
+
+# Disable OEM Hardware Crash triggers
+persist.sys.assert.enable=false
+persist.sys.strictmode.disable=true

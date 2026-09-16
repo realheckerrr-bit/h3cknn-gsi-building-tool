@@ -1,0 +1,116 @@
+name: Build Source-Based Treble GSI
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_url:
+        description: "Android ROM Manifest URL"
+        required: true
+        default: "https://github.com/LineageOS/android.git"
+        type: string
+      manifest_branch:
+        description: "Manifest Branch"
+        required: true
+        default: "lineage-21.0"
+        type: string
+      treble_branch:
+        description: "TrebleDroid Revision / Branch"
+        required: true
+        default: "android-14.0"
+        type: string
+      variant:
+        description: "Treble Variant"
+        required: true
+        default: "treble_arm64_bvN"
+        type: choice
+        options:
+          - "treble_arm64_bvN" # Vanilla (No GApps, No Root)
+          - "treble_arm64_bgN" # GApps (Google Apps included)
+          - "treble_arm64_bvS" # Vanilla with Su (Rooted)
+          - "treble_arm64_bgS" # GApps with Su
+      build_type:
+        description: "Build Type"
+        required: true
+        default: "userdebug"
+        type: choice
+        options:
+          - "userdebug"
+          - "user"
+
+jobs:
+  build_source_gsi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Maximize Runner Disk Space
+        run: |
+          chmod +x scripts/clean_disk.sh
+          ./scripts/clean_disk.sh
+
+      - name: Setup Build Dependencies & Repo Tool
+        run: |
+          chmod +x scripts/setup_deps.sh
+          ./scripts/setup_deps.sh
+          sudo curl -sL https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
+          sudo chmod a+rx /usr/local/bin/repo
+
+      - name: Sync Source Tree & Apply Treble Patches
+        run: |
+          chmod +x source/*.sh
+          ./source/sync_and_patch.sh \
+            "${{ github.event.inputs.manifest_url }}" \
+            "${{ github.event.inputs.manifest_branch }}" \
+            "${{ github.event.inputs.treble_branch }}" \
+            "$GITHUB_WORKSPACE/android_source"
+
+      - name: Compile System Image
+        run: |
+          ./source/build_source.sh \
+            "$GITHUB_WORKSPACE/android_source" \
+            "${{ github.event.inputs.variant }}" \
+            "${{ github.event.inputs.build_type }}"
+
+      - name: Generate Checksums
+        run: |
+          cd "$GITHUB_WORKSPACE/android_source/out_gsi"
+          sha256sum *.img.xz > SHA256SUMS.txt
+          echo "RELEASE_TAG=src-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
+
+      - name: Upload GSI Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.variant }}
+          path: |
+            android_source/out_gsi/*.img.xz
+            android_source/out_gsi/SHA256SUMS.txt
+          retention-days: 7
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/')
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "${{ github.event.inputs.variant }} Source GSI"
+          body: |
+            ## 📱 Source-Built Treble GSI
+            - **Manifest**: `${{ github.event.inputs.manifest_url }}` (`${{ github.event.inputs.manifest_branch }}`)
+            - **Variant**: `${{ github.event.inputs.variant }}`
+            - **Build Type**: `${{ github.event.inputs.build_type }}`
+            - **Treble Layer**: TrebleDroid `${{ github.event.inputs.treble_branch }}`
+
+            ### ⚡ Flashing Instructions:
+            ```bash
+            unxz ${{ github.event.inputs.variant }}-*.img.xz
+            fastboot reboot fastboot
+            fastboot flash system ${{ github.event.inputs.variant }}-*.img
+            fastboot -w
+            fastboot reboot
+            ```
+          files: |
+            android_source/out_gsi/*.img.xz
+            android_source/out_gsi/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

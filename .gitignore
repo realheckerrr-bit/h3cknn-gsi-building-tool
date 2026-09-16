@@ -1,0 +1,19 @@
+# Local build and download workspaces
+workspace/
+android_source/
+out/
+out_gsi/
+*.img
+*.raw.img
+*.img.xz
+*.tar.gz
+*.zip
+*.bin
+*.log
+
+# Ccache & temporary files
+.ccache/
+*.swp
+*~
+.DS_Store
+Thumbs.db
