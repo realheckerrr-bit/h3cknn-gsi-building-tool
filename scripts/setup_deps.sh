@@ -18,7 +18,6 @@ sudo apt-get install -y -qq --no-install-recommends \
   ccache \
   curl \
   e2fsprogs \
-  e2tools \
   erofs-utils \
   flex \
   g++-multilib \
@@ -54,28 +53,41 @@ sudo apt-get install -y -qq --no-install-recommends \
   android-sdk-libsparse-utils || true
 
 echo "==> [SETUP] Installing Python helper packages..."
-python3 -m pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null || python3 -m pip install --upgrade pip setuptools wheel
-python3 -m pip install --break-system-packages protobuf==3.20.* requests 2>/dev/null || python3 -m pip install protobuf==3.20.* requests
+python3 -m pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null \
+  || python3 -m pip install --upgrade pip setuptools wheel
+python3 -m pip install --break-system-packages "protobuf==3.20.*" requests 2>/dev/null \
+  || python3 -m pip install "protobuf==3.20.*" requests
 
 BIN_DIR="/usr/local/bin"
+TOOLS_DIR="$(dirname "$(realpath "$0")")/../tools"
 
 echo "==> [SETUP] Installing payload-dumper-go..."
 if ! command -v payload-dumper-go &>/dev/null; then
-  curl -sL https://github.com/ssut/payload-dumper-go/releases/latest/download/payload-dumper-go_$(curl -sL https://api.github.com/repos/ssut/payload-dumper-go/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/v//')_linux_amd64.tar.gz -o /tmp/payload-dumper-go.tar.gz || true
-  if [ -f /tmp/payload-dumper-go.tar.gz ]; then
-    tar -xzf /tmp/payload-dumper-go.tar.gz -C /tmp/
-    sudo mv /tmp/payload-dumper-go "$BIN_DIR/"
-    sudo chmod +x "$BIN_DIR/payload-dumper-go"
-    rm -f /tmp/payload-dumper-go*
-  fi
+  # Fetch latest version tag via GitHub API, fall back to known good version
+  PDGO_VERSION=$(curl -sfL "https://api.github.com/repos/ssut/payload-dumper-go/releases/latest" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null \
+    || echo "2.0.2")
+  PDGO_URL="https://github.com/ssut/payload-dumper-go/releases/download/${PDGO_VERSION}/payload-dumper-go_${PDGO_VERSION}_linux_amd64.tar.gz"
+  echo "  -> Downloading payload-dumper-go v${PDGO_VERSION}..."
+  curl -fsSL "$PDGO_URL" -o /tmp/payload-dumper-go.tar.gz
+  tar -xzf /tmp/payload-dumper-go.tar.gz -C /tmp/
+  sudo mv /tmp/payload-dumper-go "$BIN_DIR/"
+  sudo chmod +x "$BIN_DIR/payload-dumper-go"
+  rm -f /tmp/payload-dumper-go*
+  echo "  [+] payload-dumper-go installed."
+else
+  echo "  [+] payload-dumper-go already present."
 fi
 
-echo "==> [SETUP] Installing lpunpack & imjtool / ext4 utilities..."
-# Download precompiled Android OTAs / lpunpack / simg2img binaries if needed
-if ! command -v lpunpack &>/dev/null; then
-  # Build or fetch lpunpack helper
-  sudo curl -sL https://raw.githubusercontent.com/erfanoabdi/ErfanGSIs/master/bin/lpunpack -o "$BIN_DIR/lpunpack" || true
-  sudo chmod +x "$BIN_DIR/lpunpack" || true
+echo "==> [SETUP] Ensuring lpunpack.py is available..."
+# BUG FIX: Previous version fetched from ErfanGSIs which is 404.
+# Now uses unix3dgforce/lpunpack - a pure-Python super.img unpacker.
+if [ ! -f "$TOOLS_DIR/lpunpack.py" ]; then
+  curl -fsSL "https://raw.githubusercontent.com/unix3dgforce/lpunpack/master/lpunpack.py" \
+    -o "$TOOLS_DIR/lpunpack.py"
+  echo "  [+] lpunpack.py downloaded to tools/."
+else
+  echo "  [+] lpunpack.py already present in tools/."
 fi
 
 echo "==> [SETUP] Environment configured successfully."

@@ -41,26 +41,28 @@ sudo chmod 644 "$BUILD_PROP"
 set_prop() {
   local key="$1"
   local val="$2"
-  if grep -q "^$key=" "$BUILD_PROP"; then
-    sudo sed -i "s|^$key=.*|$key=$val|" "$BUILD_PROP"
+  if grep -q "^${key}=" "$BUILD_PROP"; then
+    sudo sed -i "s|^${key}=.*|${key}=${val}|" "$BUILD_PROP"
   else
-    echo "$key=$val" | sudo tee -a "$BUILD_PROP" >/dev/null
+    echo "${key}=${val}" | sudo tee -a "$BUILD_PROP" > /dev/null
   fi
 }
 
-# Apply default universal treble props
+# Apply default universal Treble props from config file
 if [ -f "$CONFIG_DIR/default_props.txt" ]; then
   echo "==> [TREBLE-PATCH] Injecting universal Treble properties..."
   while IFS='=' read -r key val || [ -n "$key" ]; do
-    [[ "$key" =~ ^#.* ]] && continue
-    [[ -z "$key" ]] && continue
+    # Skip comments and blank lines
+    [[ "$key" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${key// }" ]] && continue
     key=$(echo "$key" | xargs)
     val=$(echo "$val" | xargs)
+    [ -z "$key" ] && continue
     set_prop "$key" "$val"
   done < "$CONFIG_DIR/default_props.txt"
 fi
 
-# 2. Patch build.prop specific flags
+# 2. Patch essential Treble flags
 set_prop "ro.treble.enabled" "true"
 set_prop "ro.apex.updatable" "false"
 set_prop "ro.adb.secure" "0"
@@ -105,34 +107,39 @@ for TARGET in "${REMOVE_TARGETS[@]}"; do
   fi
 done
 
-# 5. Inject Treble Overlays & Phh Treble Settings
+# 5. Inject Treble Overlays
+# BUG FIX: treble-overlay.apk and TrebleApp.apk have NO GitHub Releases page.
+# The prebuilt APKs are bundled inside the GSI images built from source.
+# For OEM porting, we download them from phhusson's CI artifacts instead.
+echo "==> [TREBLE-PATCH] Injecting Phh Treble overlay (CI artifact)..."
+
 OVERLAY_DIR="$SYSTEM_ROOT/system/overlay"
-if [ ! -d "$OVERLAY_DIR" ] && [ -d "$SYSTEM_ROOT/overlay" ]; then
-  OVERLAY_DIR="$SYSTEM_ROOT/overlay"
-fi
+[ -d "$SYSTEM_ROOT/overlay" ] && OVERLAY_DIR="$SYSTEM_ROOT/overlay"
 sudo mkdir -p "$OVERLAY_DIR"
 
-echo "==> [TREBLE-PATCH] Downloading Phh Treble universal overlays & app..."
-# Fetch prebuilt universal treble overlays
-sudo curl -sL "https://github.com/phhusson/vendor_hardware_overlay/releases/latest/download/treble-overlay.apk" -o "$OVERLAY_DIR/treble-overlay.apk" 2>/dev/null || true
-if [ -f "$OVERLAY_DIR/treble-overlay.apk" ]; then
+# Download overlay APK from phhusson's treble_experimentations CI artifacts
+OVERLAY_URL="https://github.com/phhusson/treble_experimentations/releases/download/v402/treble-overlay.apk"
+if sudo curl -fsSL --max-time 60 "$OVERLAY_URL" -o "$OVERLAY_DIR/treble-overlay.apk" 2>/dev/null; then
   sudo chmod 644 "$OVERLAY_DIR/treble-overlay.apk"
   echo "  [+] Injected treble-overlay.apk"
+else
+  echo "  [!] Warning: Could not download treble-overlay.apk (non-fatal, continuing)"
 fi
 
-# Download TrebleApp to system/priv-app/TrebleApp for on-device hardware tuning
+# Download TrebleApp from phhusson CI artifacts
 APP_DIR="$SYSTEM_ROOT/system/priv-app/TrebleApp"
 sudo mkdir -p "$APP_DIR"
-sudo curl -sL "https://github.com/TrebleDroid/TrebleApp/releases/latest/download/TrebleApp.apk" -o "$APP_DIR/TrebleApp.apk" 2>/dev/null || true
-if [ -f "$APP_DIR/TrebleApp.apk" ]; then
+TREBLEAPP_URL="https://github.com/phhusson/treble_experimentations/releases/download/v402/TrebleApp.apk"
+if sudo curl -fsSL --max-time 60 "$TREBLEAPP_URL" -o "$APP_DIR/TrebleApp.apk" 2>/dev/null; then
   sudo chmod 644 "$APP_DIR/TrebleApp.apk"
   echo "  [+] Injected TrebleApp hardware manager"
+else
+  echo "  [!] Warning: Could not download TrebleApp.apk (non-fatal, continuing)"
 fi
 
-# 6. Adjust fstab if present in system
-find "$SYSTEM_ROOT" -name "*fstab*" -type f | while read -r FSTAB; do
+# 6. Adjust fstab entries
+find "$SYSTEM_ROOT" -name "*fstab*" -type f 2>/dev/null | while read -r FSTAB; do
   echo "==> [TREBLE-PATCH] Patching fstab: $FSTAB"
-  # Remove forceencrypt, fileencryption, and verify/avb flags
   sudo sed -i 's/fileencryption=[^,]*//g' "$FSTAB" || true
   sudo sed -i 's/forceencrypt=[^,]*//g' "$FSTAB" || true
   sudo sed -i 's/,verify//g' "$FSTAB" || true

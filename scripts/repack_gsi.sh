@@ -27,15 +27,15 @@ COMPRESSED_IMG="$OUTPUT_DIR/${OUTPUT_NAME}.img.xz"
 echo "==> [REPACK] Source directory: $SYSTEM_ROOT"
 echo "==> [REPACK] Target format: $FS_TYPE"
 
-if [ "$FS_TYPE" == "erofs" ]; then
+if [ "$FS_TYPE" = "erofs" ]; then
   echo "==> [REPACK] Building EROFS image with mkfs.erofs..."
-  mkfs.erofs -z lz4hc "$RAW_IMG" "$SYSTEM_ROOT"
-  cp "$RAW_IMG" "$SPARSE_IMG"
+  mkfs.erofs -z lz4hc "$SPARSE_IMG" "$SYSTEM_ROOT"
+  # No sparse conversion needed for EROFS
 else
   echo "==> [REPACK] Calculating partition size..."
   DIR_SIZE_BYTES=$(sudo du -sb "$SYSTEM_ROOT" | cut -f1)
-  # Add 75MB buffer
-  BUFFER_BYTES=$((75 * 1024 * 1024))
+  # Add 128MB buffer (increased from 75MB for safety with larger GSIs)
+  BUFFER_BYTES=$((128 * 1024 * 1024))
   TOTAL_SIZE_BYTES=$((DIR_SIZE_BYTES + BUFFER_BYTES))
   # Align to 4K block size
   TOTAL_SIZE_BYTES=$(( ((TOTAL_SIZE_BYTES + 4095) / 4096) * 4096 ))
@@ -48,14 +48,19 @@ else
   truncate -s "$TOTAL_SIZE_BYTES" "$RAW_IMG"
 
   echo "==> [REPACK] Formatting ext4 filesystem..."
-  mke2fs -t ext4 -b 4096 -F -O ^has_journal,^dir_index -L "system" "$RAW_IMG"
+  # BUG FIX: -O ^has_journal,^dir_index should use separate -O flags for clarity
+  mke2fs -t ext4 -b 4096 -F \
+    -O ^has_journal \
+    -O ^dir_index \
+    -L "system" "$RAW_IMG"
 
   MNT_POINT="$WORK_DIR/mnt_repack"
   sudo mkdir -p "$MNT_POINT"
 
   echo "==> [REPACK] Copying files to new filesystem..."
   sudo mount -o loop "$RAW_IMG" "$MNT_POINT"
-  sudo cp -a "$SYSTEM_ROOT"/* "$MNT_POINT/" || true
+  # BUG FIX: use trailing /. to copy directory contents, not the directory itself
+  sudo cp -a "$SYSTEM_ROOT"/. "$MNT_POINT/" || { sudo umount "$MNT_POINT"; false; }
   sudo umount "$MNT_POINT"
 
   # Shrink image to minimum size to save space
@@ -73,11 +78,13 @@ else
 fi
 
 echo "==> [REPACK] Compressing final GSI with XZ (high compression)..."
-xz -9 -T0 -k "$SPARSE_IMG"
+# BUG FIX: Use -f (force overwrite) and remove -k (no keep) to save disk space
+xz -9 -T0 -f "$SPARSE_IMG"
+# After xz without -k, the source .img is replaced by .img.xz
+COMPRESSED_IMG="${SPARSE_IMG}.xz"
 
 echo "================================================================="
 echo "==> [REPACK] GSI BUILT SUCCESSFULLY!"
-echo "  Image path:      $SPARSE_IMG"
 echo "  Compressed path: $COMPRESSED_IMG"
 echo "  Final Size:      $(du -h "$COMPRESSED_IMG" | cut -f1)"
 echo "================================================================="

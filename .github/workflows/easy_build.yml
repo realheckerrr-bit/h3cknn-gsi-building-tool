@@ -1,0 +1,136 @@
+name: "⚡ EASY GSI Builder (Just paste URL!)"
+
+# ==============================================================================
+# EASY BUILD - Simplest possible way to build a GSI.
+# Just paste your ROM download URL and hit Run!
+# The rest is automatic.
+# ==============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      rom_url:
+        description: "📥 Paste your ROM download URL here (zip, tgz, bin, img...)"
+        required: true
+        type: string
+      output_name:
+        description: "📛 Name for your GSI (optional)"
+        required: false
+        default: "My_GSI"
+        type: string
+      gsi_type:
+        description: "💾 Image format"
+        required: false
+        default: "ext4 (most compatible)"
+        type: choice
+        options:
+          - "ext4 (most compatible)"
+          - "erofs (smaller size)"
+
+jobs:
+  easy_build:
+    name: "⚡ Easy GSI Build"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: "📦 Checkout"
+        uses: actions/checkout@v4
+
+      - name: "📊 Build Info"
+        run: |
+          echo "=================================================="
+          echo "  ⚡ h3cknn Easy GSI Builder"
+          echo "  ROM:    ${{ github.event.inputs.rom_url }}"
+          echo "  Name:   ${{ github.event.inputs.output_name }}"
+          echo "  Format: ${{ github.event.inputs.gsi_type }}"
+          echo "=================================================="
+
+      - name: "🧹 Free Disk Space"
+        run: bash scripts/clean_disk.sh
+
+      - name: "⚙️ Install Tools"
+        run: bash scripts/setup_deps.sh
+
+      - name: "🚀 Build GSI"
+        run: |
+          # Parse fs_type from the friendly label
+          FS_RAW="${{ github.event.inputs.gsi_type }}"
+          FS_TYPE="${FS_RAW%%\ *}"   # takes "ext4" from "ext4 (most compatible)"
+
+          # Auto-detect OEM profile from URL
+          ROM_URL="${{ github.event.inputs.rom_url }}"
+          ROM_TYPE="generic"
+          echo "$ROM_URL" | grep -qi "pixel\|google"      && ROM_TYPE="pixel"
+          echo "$ROM_URL" | grep -qi "hyperos\|miui\|xiaomi" && ROM_TYPE="hyperos"
+          echo "$ROM_URL" | grep -qi "oneui\|samsung\|galaxy"  && ROM_TYPE="oneui"
+          echo "$ROM_URL" | grep -qi "oxygen\|color\|oneplus\|oppo" && ROM_TYPE="oxygenos"
+          echo "$ROM_URL" | grep -qi "motorola\|moto"     && ROM_TYPE="motorola"
+          echo "  -> Auto-detected OEM profile: $ROM_TYPE"
+
+          chmod +x scripts/*.sh
+          bash scripts/port_rom.sh \
+            "$ROM_URL" \
+            "${{ github.event.inputs.output_name }}" \
+            "$ROM_TYPE" \
+            "$FS_TYPE"
+
+      - name: "🔑 Checksum"
+        run: |
+          cd workspace/output
+          sha256sum *.img.xz > SHA256SUMS.txt
+          echo "RELEASE_TAG=easy-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
+
+      - name: "📊 Build Summary"
+        run: |
+          echo "=================================================="
+          echo "✅ BUILD COMPLETE!"
+          echo "  Output:"
+          ls -lh workspace/output/
+          echo "=================================================="
+        if: success()
+
+      - name: "📤 Upload Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ github.event.inputs.output_name }}-GSI"
+          path: |
+            workspace/output/*.img.xz
+            workspace/output/SHA256SUMS.txt
+          retention-days: 14
+
+      - name: "🏷️ Publish Release"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "📱 ${{ github.event.inputs.output_name }} GSI"
+          body: |
+            ## ⚡ Easy GSI Build
+
+            | Field | Value |
+            |---|---|
+            | Source ROM | `${{ github.event.inputs.rom_url }}` |
+            | Format | `${{ github.event.inputs.gsi_type }}` |
+            | Architecture | ARM64 A/B (Treble) |
+            | Runner | Ubuntu Latest |
+
+            ### ⚡ How to Flash
+            ```bash
+            # 1. Extract the image
+            unxz ${{ github.event.inputs.output_name }}.img.xz
+
+            # 2. Boot to fastbootd (needed for dynamic partitions)
+            adb reboot bootloader
+            fastboot reboot fastboot
+
+            # 3. Flash & wipe
+            fastboot flash system ${{ github.event.inputs.output_name }}.img
+            fastboot -w
+            fastboot reboot
+            ```
+          files: |
+            workspace/output/*.img.xz
+            workspace/output/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

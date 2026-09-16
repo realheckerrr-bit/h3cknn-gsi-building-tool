@@ -1,19 +1,19 @@
-name: Port Treble GSI (OEM to GSI)
+name: "🔧 Port Treble GSI (OEM to GSI)"
 
 on:
   workflow_dispatch:
     inputs:
       rom_url:
-        description: "Direct ROM Download URL (zip / bin / tgz / img)"
+        description: "📥 Direct ROM Download URL (zip / bin / tgz / img)"
         required: true
         type: string
       output_name:
-        description: "Output GSI Name"
+        description: "📛 Output GSI Name"
         required: true
         default: "Ported_GSI_ARM64"
         type: string
       rom_type:
-        description: "OEM Profile"
+        description: "📱 OEM Profile"
         required: true
         default: "generic"
         type: choice
@@ -25,7 +25,7 @@ on:
           - "oxygenos"
           - "motorola"
       fs_type:
-        description: "Output Filesystem"
+        description: "💾 Output Filesystem"
         required: true
         default: "ext4"
         type: choice
@@ -36,38 +36,41 @@ on:
 jobs:
   port_gsi:
     runs-on: ubuntu-latest
+    # Allow the workflow to create releases
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout Repository
+      - name: "📦 Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: Maximize Runner Disk Space
+      - name: "🧹 Maximize Runner Disk Space"
         run: |
           chmod +x scripts/clean_disk.sh
-          ./scripts/clean_disk.sh
+          bash scripts/clean_disk.sh
 
-      - name: Setup Build Dependencies
+      - name: "⚙️ Setup Build Dependencies"
         run: |
           chmod +x scripts/setup_deps.sh
-          ./scripts/setup_deps.sh
+          bash scripts/setup_deps.sh
 
-      - name: Execute GSI Porting Engine
+      - name: "🚀 Execute GSI Porting Engine"
         run: |
-          chmod +x scripts/*.sh tools/*.py
-          ./scripts/port_rom.sh \
+          chmod +x scripts/*.sh
+          bash scripts/port_rom.sh \
             "${{ github.event.inputs.rom_url }}" \
             "${{ github.event.inputs.output_name }}" \
             "${{ github.event.inputs.rom_type }}" \
             "${{ github.event.inputs.fs_type }}"
 
-      - name: Generate Release Checksums
+      - name: "🔑 Generate Release Checksums"
         id: checksums
         run: |
           cd workspace/output
           sha256sum *.img.xz > SHA256SUMS.txt
           echo "RELEASE_TAG=v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
-      - name: Upload GSI to GitHub Actions Artifacts
+      - name: "📤 Upload GSI to GitHub Actions Artifacts"
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.output_name }}
@@ -76,9 +79,11 @@ jobs:
             workspace/output/SHA256SUMS.txt
           retention-days: 7
 
-      - name: Create GitHub Release
+      - name: "🏷️ Create GitHub Release"
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/heads/')
+        # BUG FIX: 'startsWith(github.ref, "refs/heads/")' never fires on
+        # workflow_dispatch from Actions UI. Removed condition so releases
+        # are always created after a successful build.
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "${{ github.event.inputs.output_name }} (Treble GSI)"
@@ -88,6 +93,7 @@ jobs:
             - **OEM Profile**: `${{ github.event.inputs.rom_type }}`
             - **Filesystem**: `${{ github.event.inputs.fs_type }}`
             - **Target Architecture**: ARM64 A/B (Project Treble)
+            - **Built on**: ${{ github.run_id }}
 
             ### ⚡ Flashing Instructions:
             ```bash
