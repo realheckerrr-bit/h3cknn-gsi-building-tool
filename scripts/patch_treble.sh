@@ -69,6 +69,43 @@ set_prop "ro.adb.secure" "0"
 set_prop "ro.secure" "0"
 set_prop "ro.debuggable" "1"
 
+# 2b. Stamp h3cknnGSI_tool branding into the Android build number
+# Result in Settings > About Phone > Build Number:
+#   "<original_build_number> via h3cknnGSI_tool"
+echo "==> [TREBLE-PATCH] Stamping h3cknnGSI_tool branding into build number..."
+
+# Read current ro.build.display.id (shown as "Build number" in Settings)
+ORIG_BUILD_ID=$(grep -m1 "^ro\.build\.display\.id=" "$BUILD_PROP" \
+  | cut -d'=' -f2- | xargs 2>/dev/null || true)
+
+# If property doesn't exist, fall back to ro.build.id
+if [ -z "$ORIG_BUILD_ID" ]; then
+  ORIG_BUILD_ID=$(grep -m1 "^ro\.build\.id=" "$BUILD_PROP" \
+    | cut -d'=' -f2- | xargs 2>/dev/null || true)
+fi
+
+# If still empty use a generic placeholder
+[ -z "$ORIG_BUILD_ID" ] && ORIG_BUILD_ID="unknown"
+
+BRANDED_BUILD_ID="${ORIG_BUILD_ID} via h3cknnGSI_tool"
+set_prop "ro.build.display.id" "$BRANDED_BUILD_ID"
+echo "  [+] ro.build.display.id = $BRANDED_BUILD_ID"
+
+# Also stamp ro.build.description (visible in bug reports / adb)
+ORIG_DESC=$(grep -m1 "^ro\.build\.description=" "$BUILD_PROP" \
+  | cut -d'=' -f2- | xargs 2>/dev/null || true)
+if [ -n "$ORIG_DESC" ]; then
+  set_prop "ro.build.description" "${ORIG_DESC} via h3cknnGSI_tool"
+  echo "  [+] ro.build.description stamped."
+fi
+
+# Custom identifier prop (queryable via adb shell getprop ro.h3cknn.gsi)
+set_prop "ro.h3cknn.gsi.builder" "h3cknnGSI_tool"
+set_prop "ro.h3cknn.gsi.version"  "$(date +%Y%m%d)"
+set_prop "ro.h3cknn.gsi.profile"  "$ROM_TYPE"
+echo "  [+] ro.h3cknn.gsi.* properties set."
+
+
 # 3. Clean up OEM-specific crashing hardware services
 echo "==> [TREBLE-PATCH] Sanitizing init scripts and services..."
 
