@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       rom_url:
-        description: "📥 Paste your ROM download URL here (zip, tgz, bin, img...)"
+        description: "📥 Paste your ROM URL here — direct link OR Google Drive sharing link"
         required: true
         type: string
       output_name:

@@ -55,8 +55,9 @@ sudo apt-get install -y -qq --no-install-recommends \
 echo "==> [SETUP] Installing Python helper packages..."
 python3 -m pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null \
   || python3 -m pip install --upgrade pip setuptools wheel
-python3 -m pip install --break-system-packages "protobuf==3.20.*" requests 2>/dev/null \
-  || python3 -m pip install "protobuf==3.20.*" requests
+python3 -m pip install --break-system-packages "protobuf==3.20.*" requests gdown 2>/dev/null \
+  || python3 -m pip install "protobuf==3.20.*" requests gdown
+echo "  [+] gdown (Google Drive downloader) installed."
 
 BIN_DIR="/usr/local/bin"
 TOOLS_DIR="$(dirname "$(realpath "$0")")/../tools"

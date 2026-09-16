@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       rom_url:
-        description: "📥 Direct ROM Download URL (zip / bin / tgz / img)"
+        description: "📥 Direct ROM URL or Google Drive sharing link (zip / bin / tgz / img / GDrive)"
         required: true
         type: string
       output_name:

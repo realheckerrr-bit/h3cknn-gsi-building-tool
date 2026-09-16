@@ -25,15 +25,30 @@ fi
 echo "==> [EXTRACT] Starting download from: $ROM_URL"
 cd "$DOWNLOAD_DIR"
 
-# Download with aria2c for multi-connection speed, fall back to wget
-aria2c -x16 -s16 -j4 --continue=true --check-certificate=false "$ROM_URL" \
-  || wget --no-check-certificate "$ROM_URL"
+# ── Google Drive URL detection ───────────────────────────────────────────────
+# Supports all GDrive sharing link formats including /file/d/, /open?id=, /uc?id=
+is_gdrive_url() {
+  echo "$1" | grep -qiP '(drive\.google\.com|docs\.google\.com/.*drive)'
+}
 
-# BUG FIX: previous glob used head -n1 but didn't exclude aria2 temp files reliably
-ROM_FILE=$(find "$DOWNLOAD_DIR" -maxdepth 1 -type f ! -name "*.aria2" ! -name "*.tmp" | sort | head -n 1)
-if [ -z "$ROM_FILE" ]; then
-  echo "[-] ERROR: Download failed. No file found in $DOWNLOAD_DIR"
-  exit 1
+if is_gdrive_url "$ROM_URL"; then
+  echo "==> [EXTRACT] Detected Google Drive URL — using gdrive_download.sh..."
+  ROM_FILE=$(bash "$SCRIPT_DIR/gdrive_download.sh" "$ROM_URL" "$DOWNLOAD_DIR")
+  if [ -z "$ROM_FILE" ] || [ ! -f "$ROM_FILE" ]; then
+    echo "[-] ERROR: Google Drive download failed."
+    exit 1
+  fi
+else
+  # Normal download with aria2c (multi-connection), fall back to wget
+  aria2c -x16 -s16 -j4 --continue=true --check-certificate=false "$ROM_URL" \
+    || wget --no-check-certificate "$ROM_URL"
+  # BUG FIX: exclude aria2 temp files reliably
+  ROM_FILE=$(find "$DOWNLOAD_DIR" -maxdepth 1 -type f \
+    ! -name "*.aria2" ! -name "*.tmp" | sort | head -n 1)
+  if [ -z "$ROM_FILE" ]; then
+    echo "[-] ERROR: Download failed. No file found in $DOWNLOAD_DIR"
+    exit 1
+  fi
 fi
 
 echo "==> [EXTRACT] Downloaded file: $(basename "$ROM_FILE") ($(du -h "$ROM_FILE" | cut -f1))"
