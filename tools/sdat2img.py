@@ -16,12 +16,19 @@ def parse_transfer_list(transfer_list_file):
             f.readline()  # stash entries
             f.readline()  # max stash
         for line in f:
-            parts = line.strip().split()
-            if not parts:
+            line = line.strip()
+            if not line:
                 continue
+
+            # Android transfer lists use comma-separated ranges, for example:
+            #   new 2,0,1024
+            # Older tools sometimes emit the same values space-separated, so
+            # accept both forms.
+            parts = line.split(None, 1)
             cmd = parts[0]
-            if cmd in ('new', 'zero', 'erase'):
-                commands.append((cmd, [int(x) for x in parts[1:]]))
+            if cmd in ('new', 'zero', 'erase') and len(parts) == 2:
+                range_text = parts[1].replace(',', ' ')
+                commands.append((cmd, [int(x) for x in range_text.split()]))
     return version, total_blocks, commands
 
 def ranges_to_blocks(ranges):
