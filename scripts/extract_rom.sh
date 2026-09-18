@@ -78,12 +78,31 @@ else
   7z x -y "$ROM_FILE" -o"$EXTRACT_DIR" 2>/dev/null || cp "$ROM_FILE" "$EXTRACT_DIR/"
 fi
 
-# 1. Check for payload.bin (any depth)
-PAYLOAD_PATH=$(find "$EXTRACT_DIR" -name "payload.bin" 2>/dev/null | head -n 1)
+# 1. Check for a real Android OTA payload (any depth).
+# Some recovery ROM ZIPs contain an unrelated file named payload.bin.  Passing
+# that file to payload-dumper-go makes the whole pipeline exit with code 1,
+# even though the ZIP may also contain usable system/super images.
+PAYLOAD_PATH=""
+while IFS= read -r candidate; do
+  PAYLOAD_MAGIC=$(od -An -tx1 -N4 "$candidate" 2>/dev/null | tr -d '[:space:]' || true)
+  if [ "$PAYLOAD_MAGIC" = "43724155" ]; then
+    PAYLOAD_PATH="$candidate"
+    break
+  fi
+  echo "  [!] Ignoring non-OTA payload file: $candidate"
+done < <(find "$EXTRACT_DIR" -type f -name "payload.bin" -print 2>/dev/null)
+
 if [ -n "$PAYLOAD_PATH" ]; then
-  echo "==> [EXTRACT] Detected payload.bin at $PAYLOAD_PATH. Dumping partitions..."
-  payload-dumper-go -o "$EXTRACT_DIR/payload_out" "$PAYLOAD_PATH"
-  find "$EXTRACT_DIR/payload_out" -name "*.img" -exec mv {} "$EXTRACT_DIR/" \;
+  echo "==> [EXTRACT] Detected Android OTA payload at $PAYLOAD_PATH. Dumping partitions..."
+  PAYLOAD_OUT="$EXTRACT_DIR/payload_out"
+  mkdir -p "$PAYLOAD_OUT"
+  if payload-dumper-go -o "$PAYLOAD_OUT" "$PAYLOAD_PATH"; then
+    find "$PAYLOAD_OUT" -type f -name "*.img" -exec mv -f {} "$EXTRACT_DIR/" \;
+  else
+    echo "[-] WARNING: payload-dumper-go could not unpack the OTA payload; checking for images already in the ROM."
+  fi
+else
+  echo "==> [EXTRACT] No valid Android OTA payload found; checking extracted ROM contents."
 fi
 
 # 2. Check for super.img (Dynamic Partitions)
