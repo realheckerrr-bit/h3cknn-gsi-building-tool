@@ -80,6 +80,22 @@ jobs:
         run: |
           cd workspace/output
           sha256sum *.img.xz > SHA256SUMS.txt
+          cat > build-info.txt <<EOF
+          GSI build report
+          ================
+          Output name: ${{ github.event.inputs.output_name }}
+          Tool version: $(cat ../../VERSION)
+          Source ROM: ${{ github.event.inputs.rom_url }}
+          OEM profile: ${{ github.event.inputs.rom_type }}
+          Filesystem: ${{ github.event.inputs.fs_type }}
+          Target architecture: ARM64 A/B Treble GSI
+          Commit: ${{ github.sha }}
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          Checksums:
+          $(cat SHA256SUMS.txt)
+          EOF
           echo "RELEASE_TAG=v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
       - name: "📤 Upload GSI to GitHub Actions Artifacts"
@@ -89,6 +105,7 @@ jobs:
           path: |
             workspace/output/*.img.xz
             workspace/output/SHA256SUMS.txt
+            workspace/output/build-info.txt
           retention-days: 7
 
       - name: "🏷️ Create GitHub Release"
@@ -106,6 +123,12 @@ jobs:
             - **Filesystem**: `${{ github.event.inputs.fs_type }}`
             - **Target Architecture**: ARM64 A/B (Project Treble)
             - **Built on**: ${{ github.run_id }}
+            - **Commit**: `${{ github.sha }}`
+            - **Build report**: `build-info.txt`
+
+            The build report contains the exact input parameters and SHA-256 checksum.
+            After the build, the workflow attempts to attach Android emulator screenshots
+            (`build-info.png` and `home-screen.png`) to this same release.
 
             ### ⚡ Flashing Instructions:
             ```bash
@@ -121,15 +144,18 @@ jobs:
           files: |
             workspace/output/*.img.xz
             workspace/output/SHA256SUMS.txt
+            workspace/output/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable KVM for Android emulator
+        continue-on-error: true
         run: |
           sudo chmod 666 /dev/kvm
           ls -l /dev/kvm
 
       - name: Boot Android emulator and capture screenshots
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -144,13 +170,17 @@ jobs:
             bash scripts/capture_android_screenshots.sh android-screenshots
 
       - name: Upload screenshots to GitHub Actions
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.output_name }}-android-screenshots
           path: android-screenshots/
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Attach screenshots to the GSI release
+        if: always()
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
@@ -158,5 +188,7 @@ jobs:
             android-screenshots/build-info.png
             android-screenshots/home-screen.png
             android-screenshots/build-properties.txt
+            workspace/output/build-info.txt
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
