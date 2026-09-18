@@ -6,6 +6,8 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+VERSION_FILE="$SCRIPT_DIR/../VERSION"
+TOOL_VERSION="$(cat "$VERSION_FILE" 2>/dev/null || echo "0.0.1")"
 ROM_URL="${1:-}"
 OUTPUT_NAME="${2:-GSI_Treble_ARM64}"
 ROM_TYPE="${3:-generic}"
@@ -29,6 +31,7 @@ fi
 
 echo "=========================================================="
 echo "Starting Project Treble GSI Porting Pipeline"
+echo " Tool Version: $TOOL_VERSION"
 echo " ROM URL:     $ROM_URL"
 echo " Output Name: $OUTPUT_NAME"
 echo " Profile:     $ROM_TYPE"

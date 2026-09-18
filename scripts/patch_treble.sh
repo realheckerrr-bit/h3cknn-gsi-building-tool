@@ -203,12 +203,15 @@ else
 fi
 
 # 6. Adjust fstab entries
-find "$SYSTEM_ROOT" -name "*fstab*" -type f 2>/dev/null | while read -r FSTAB; do
+# Keep an empty fstab search from tripping errexit/ERR when the extracted
+# system image has no fstab files.
+while IFS= read -r FSTAB; do
+  [ -z "$FSTAB" ] && continue
   echo "==> [TREBLE-PATCH] Patching fstab: $FSTAB"
   "${SUDO[@]}" sed -i 's/fileencryption=[^,]*//g' "$FSTAB" || true
   "${SUDO[@]}" sed -i 's/forceencrypt=[^,]*//g' "$FSTAB" || true
   "${SUDO[@]}" sed -i 's/,verify//g' "$FSTAB" || true
   "${SUDO[@]}" sed -i 's/,avb[^,]*//g' "$FSTAB" || true
-done
+done < <(find "$SYSTEM_ROOT" -name "*fstab*" -type f -print 2>/dev/null || true)
 
 echo "==> [TREBLE-PATCH] Project Treble modifications applied successfully!"

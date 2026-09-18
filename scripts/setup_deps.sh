@@ -29,8 +29,8 @@ sudo apt-get install -y -qq --no-install-recommends \
   lib32readline-dev \
   lib32z1-dev \
   liblz4-tool \
-  libncurses5 \
-  libncurses5-dev \
+  libncurses6 \
+  libncurses-dev \
   libssl-dev \
   libxml2 \
   libxml2-utils \
@@ -50,7 +50,7 @@ sudo apt-get install -y -qq --no-install-recommends \
   zip \
   zlib1g-dev \
   zstd \
-  android-sdk-libsparse-utils || true
+  android-sdk-libsparse-utils
 
 echo "==> [SETUP] Installing Python helper packages..."
 python3 -m pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null \
