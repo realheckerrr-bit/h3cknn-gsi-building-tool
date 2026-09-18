@@ -36,7 +36,7 @@ on:
 jobs:
   port_gsi:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     concurrency:
       group: port-gsi
       cancel-in-progress: true
@@ -115,5 +115,42 @@ jobs:
           files: |
             workspace/output/*.img.xz
             workspace/output/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable KVM for Android emulator
+        run: |
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+
+      - name: Boot Android emulator and capture screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: |
+            chmod +x scripts/capture_android_screenshots.sh
+            bash scripts/capture_android_screenshots.sh android-screenshots
+
+      - name: Upload screenshots to GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.output_name }}-android-screenshots
+          path: android-screenshots/
+          retention-days: 14
+
+      - name: Attach screenshots to the GSI release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            android-screenshots/build-info.png
+            android-screenshots/home-screen.png
+            android-screenshots/build-properties.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
