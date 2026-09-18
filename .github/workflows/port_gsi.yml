@@ -43,6 +43,9 @@ jobs:
     # Allow the workflow to create releases
     permissions:
       contents: write
+    env:
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
     steps:
       - name: "📦 Checkout Repository"
@@ -52,6 +55,9 @@ jobs:
         run: |
           chmod +x scripts/clean_disk.sh
           bash scripts/clean_disk.sh
+
+      - name: Prepare writable Android SDK directory
+        run: mkdir -p "$ANDROID_HOME"
 
       - name: "⚙️ Setup Build Dependencies"
         run: |
