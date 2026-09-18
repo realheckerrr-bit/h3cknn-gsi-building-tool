@@ -12,7 +12,6 @@ df -h /
 echo "==> [CLEAN DISK] Removing unused tools and runtimes..."
 sudo rm -rf \
   /usr/share/dotnet \
-  /usr/local/lib/android \
   /opt/ghc \
   /usr/local/share/boost \
   /usr/share/swift \
