@@ -10,7 +10,7 @@ jobs:
   screenshots:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -19,11 +19,13 @@ jobs:
       - name: Boot Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
+          api-level: 30
+          target: default
+          arch: x86
           profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
+          disable-linux-hw-accel: true
+          emulator-boot-timeout: 300
           disable-animations: true
           script: |
             chmod +x scripts/capture_android_screenshots.sh
