@@ -1,0 +1,33 @@
+name: "Android Emulator Screenshots"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Boot Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            chmod +x scripts/capture_android_screenshots.sh
+            bash scripts/capture_android_screenshots.sh android-screenshots
+
+      - name: Upload Android screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-screenshots
+          path: android-screenshots/
+          retention-days: 14

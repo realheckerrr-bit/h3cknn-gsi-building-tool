@@ -92,6 +92,17 @@ git push -u origin main
    - **Build Type**: `userdebug`
 3. Click **Run workflow**.
 
+### 4. Capture Android build and home screenshots
+
+The **Android Emulator Screenshots** workflow boots a clean Android emulator,
+captures the Android build-information screen and home screen, and uploads both
+PNG files as an Actions artifact. Run it from the **Actions** tab and download
+the `android-emulator-screenshots` artifact.
+
+The standard GitHub-hosted emulator is x86_64, while this project produces
+ARM64 GSIs. Therefore this workflow validates the emulator and screenshot
+pipeline; it does not claim to boot-flash the ARM64 GSI itself.
+
 ---
 
 ## ⚡ How to Flash the Resulting GSI
