@@ -88,8 +88,17 @@ while IFS= read -r candidate; do
   if [ "$PAYLOAD_MAGIC" = "43724155" ]; then
     PAYLOAD_PATH="$candidate"
     break
+  elif [ "$PAYLOAD_MAGIC" = "504b0304" ]; then
+    # A few recovery ROMs ship an OTA ZIP with the misleading filename
+    # payload.bin.  Unpack it so system.new.dat.br/system.img can be found.
+    PAYLOAD_ZIP_DIR="$EXTRACT_DIR/payload_zip"
+    mkdir -p "$PAYLOAD_ZIP_DIR"
+    echo "  [!] payload.bin is a ZIP container; extracting its partition files."
+    7z x -y "$candidate" -o"$PAYLOAD_ZIP_DIR" >/dev/null
   fi
-  echo "  [!] Ignoring non-OTA payload file: $candidate"
+  if [ "$PAYLOAD_MAGIC" != "504b0304" ]; then
+    echo "  [!] Ignoring non-OTA payload file: $candidate"
+  fi
 done < <(find "$EXTRACT_DIR" -type f -name "payload.bin" -print 2>/dev/null)
 
 if [ -n "$PAYLOAD_PATH" ]; then
