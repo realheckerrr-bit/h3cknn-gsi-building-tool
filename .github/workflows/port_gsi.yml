@@ -36,6 +36,10 @@ on:
 jobs:
   port_gsi:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: port-gsi
+      cancel-in-progress: true
     # Allow the workflow to create releases
     permissions:
       contents: write
