@@ -38,8 +38,13 @@ echo " Profile:     $ROM_TYPE"
 echo " Filesystem:  $FS_TYPE"
 echo "=========================================================="
 
-# 1. Setup dependencies
-bash "$SCRIPT_DIR/setup_deps.sh"
+# 1. Setup dependencies. Workflows install these in a dedicated step first;
+# avoid repeating apt/pip work when that step sets SKIP_SETUP_DEPS=1.
+if [ "${SKIP_SETUP_DEPS:-0}" = "1" ]; then
+  echo "==> [SETUP] Dependencies already installed; skipping duplicate setup."
+else
+  bash "$SCRIPT_DIR/setup_deps.sh"
+fi
 
 # 2. Extract ROM
 bash "$SCRIPT_DIR/extract_rom.sh" "$ROM_URL" "$WORK_DIR"

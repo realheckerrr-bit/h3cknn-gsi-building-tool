@@ -182,24 +182,25 @@ OVERLAY_DIR="$SYSTEM_ROOT/system/overlay"
 [ -d "$SYSTEM_ROOT/overlay" ] && OVERLAY_DIR="$SYSTEM_ROOT/overlay"
 "${SUDO[@]}" mkdir -p "$OVERLAY_DIR"
 
-# Download overlay APK from phhusson's treble_experimentations CI artifacts
-OVERLAY_URL="https://github.com/phhusson/treble_experimentations/releases/download/v402/treble-overlay.apk"
-if "${SUDO[@]}" curl -fsSL --max-time 60 "$OVERLAY_URL" -o "$OVERLAY_DIR/treble-overlay.apk" 2>/dev/null; then
+# An overlay URL must be supplied by the caller because the old v402 release
+# endpoint no longer exists. Never create an empty APK on a failed download.
+OVERLAY_URL="${TREBLE_OVERLAY_URL:-}"
+if [ -n "$OVERLAY_URL" ] && "${SUDO[@]}" curl -fsSL --max-time 60 "$OVERLAY_URL" -o "$OVERLAY_DIR/treble-overlay.apk" 2>/dev/null; then
   "${SUDO[@]}" chmod 644 "$OVERLAY_DIR/treble-overlay.apk"
   echo "  [+] Injected treble-overlay.apk"
 else
-  echo "  [!] Warning: Could not download treble-overlay.apk (non-fatal, continuing)"
+  echo "  [!] Treble overlay URL not configured; skipping optional overlay"
 fi
 
 # Download TrebleApp from phhusson CI artifacts
 APP_DIR="$SYSTEM_ROOT/system/priv-app/TrebleApp"
 "${SUDO[@]}" mkdir -p "$APP_DIR"
-TREBLEAPP_URL="https://github.com/phhusson/treble_experimentations/releases/download/v402/TrebleApp.apk"
-if "${SUDO[@]}" curl -fsSL --max-time 60 "$TREBLEAPP_URL" -o "$APP_DIR/TrebleApp.apk" 2>/dev/null; then
+TREBLEAPP_URL="${TREBLE_APP_URL:-}"
+if [ -n "$TREBLEAPP_URL" ] && "${SUDO[@]}" curl -fsSL --max-time 60 "$TREBLEAPP_URL" -o "$APP_DIR/TrebleApp.apk" 2>/dev/null; then
   "${SUDO[@]}" chmod 644 "$APP_DIR/TrebleApp.apk"
   echo "  [+] Injected TrebleApp hardware manager"
 else
-  echo "  [!] Warning: Could not download TrebleApp.apk (non-fatal, continuing)"
+  echo "  [!] TrebleApp URL not configured; skipping optional app"
 fi
 
 # 6. Adjust fstab entries

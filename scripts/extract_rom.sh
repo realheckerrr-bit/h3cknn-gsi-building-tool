@@ -40,11 +40,16 @@ if is_gdrive_url "$ROM_URL"; then
   fi
 else
   # Normal download with aria2c (multi-connection), fall back to wget
-  aria2c -x16 -s16 -j4 --continue=true --check-certificate=false "$ROM_URL" \
-    || wget --no-check-certificate "$ROM_URL"
-  # BUG FIX: exclude aria2 temp files reliably
+  aria2c -x16 -s16 -j4 --continue=true --check-certificate=false \
+    --connect-timeout=30 --timeout=60 --max-tries=3 --retry-wait=5 \
+    --file-allocation=none "$ROM_URL" \
+    || wget --no-check-certificate --timeout=60 --tries=3 "$ROM_URL"
+  # Ignore aria2 bookkeeping/partial files and choose the largest completed
+  # candidate. This prevents a failed first download from being mistaken for
+  # the ROM when wget creates a second file.
   ROM_FILE=$(find "$DOWNLOAD_DIR" -maxdepth 1 -type f \
-    ! -name "*.aria2" ! -name "*.tmp" | sort | head -n 1)
+    ! -name "*.aria2" ! -name "*.tmp" ! -name "*.part" -size +0c \
+    -printf '%s\t%p\n' | sort -nr | head -n 1 | cut -f2-)
   if [ -z "$ROM_FILE" ]; then
     echo "[-] ERROR: Download failed. No file found in $DOWNLOAD_DIR"
     exit 1

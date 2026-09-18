@@ -55,6 +55,8 @@ jobs:
           bash scripts/setup_deps.sh
 
       - name: "🚀 Execute GSI Porting Engine"
+        env:
+          SKIP_SETUP_DEPS: "1"
         run: |
           chmod +x scripts/*.sh
           bash scripts/port_rom.sh \

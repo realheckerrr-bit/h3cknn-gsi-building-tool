@@ -54,6 +54,8 @@ jobs:
         run: bash scripts/setup_deps.sh
 
       - name: "🚀 Build GSI"
+        env:
+          SKIP_SETUP_DEPS: "1"
         run: |
           # Parse fs_type from the friendly label
           FS_RAW="${{ github.event.inputs.gsi_type }}"
