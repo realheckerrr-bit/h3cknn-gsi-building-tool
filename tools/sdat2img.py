@@ -33,8 +33,12 @@ def parse_transfer_list(transfer_list_file):
 
 def ranges_to_blocks(ranges):
     blocks = []
-    num_ranges = ranges[0]
-    for i in range(1, num_ranges * 2, 2):
+    # The first value is the number of range values that follow, not the
+    # number of start/end pairs.  Thus `2,0,1024` means blocks [0, 1024).
+    range_value_count = ranges[0]
+    if range_value_count % 2 != 0 or len(ranges) < range_value_count + 1:
+        raise ValueError(f"Invalid block range: {ranges}")
+    for i in range(1, range_value_count + 1, 2):
         start = ranges[i]
         end = ranges[i + 1]
         blocks.extend(range(start, end))
