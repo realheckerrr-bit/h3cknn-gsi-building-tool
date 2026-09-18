@@ -16,6 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Enable KVM for Android emulator
+        run: |
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+
       - name: Boot Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
