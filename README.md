@@ -92,6 +92,17 @@ git push -u origin main
    - **Build Type**: `userdebug`
 3. Click **Run workflow**.
 
+## 📣 Telegram release notifications
+
+After a successful port build, the workflow can send the release summary and
+actual GSI metadata to Telegram. Add these repository secrets in **Settings →
+Secrets and variables → Actions**:
+
+- `TELEGRAM_BOT_TOKEN` — token from [@BotFather](https://t.me/BotFather).
+- `TELEGRAM_CHAT_ID` — the destination user, group, or channel chat ID.
+
+If either secret is absent, the workflow skips Telegram without failing the build.
+
 ## ⚡ How to Flash the Resulting GSI
 
 1. Extract the downloaded image:

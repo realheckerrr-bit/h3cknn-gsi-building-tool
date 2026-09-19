@@ -118,23 +118,37 @@ jobs:
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          Android build properties:
-          Device brand: $(prop ro.product.system.brand ro.product.brand)
-          Device manufacturer: $(prop ro.product.system.manufacturer ro.product.manufacturer)
-          Device model: $(prop ro.product.system.model ro.product.model)
-          Device codename: $(prop ro.product.system.device ro.product.device)
-          Device board: $(prop ro.product.board ro.board.platform)
-          Android version: $(prop ro.build.version.release)
-          Android SDK: $(prop ro.build.version.sdk)
-          Build fingerprint: $(prop ro.build.fingerprint)
-          Build type: $(prop ro.build.type)
-          Build tags: $(prop ro.build.tags)
-          Build ID: $(prop ro.build.id)
-          Security patch: $(prop ro.build.version.security_patch)
-          Raw Image Size: $RAW_IMAGE_SIZE ($RAW_IMAGE_BYTES bytes)
-
           Checksums:
           $(cat SHA256SUMS.txt)
+          EOF
+
+          cat > release-notes.md <<EOF
+          ## Generic System Image (GSI) Build
+
+          - **Source ROM**: `${{ github.event.inputs.rom_url }}`
+          - **OEM profile**: `${{ github.event.inputs.rom_type }}`
+          - **Filesystem**: `${{ github.event.inputs.fs_type }}`
+          - **Target architecture**: ARM64 A/B (Project Treble)
+          - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Commit**: `${{ github.sha }}`
+
+          ### Android build properties
+
+          - **Device brand**: $(prop ro.product.system.brand ro.product.brand)
+          - **Device manufacturer**: $(prop ro.product.system.manufacturer ro.product.manufacturer)
+          - **Device model**: $(prop ro.product.system.model ro.product.model)
+          - **Device codename**: $(prop ro.product.system.device ro.product.device)
+          - **Device board**: $(prop ro.product.board ro.board.platform)
+          - **Android version**: $(prop ro.build.version.release) (SDK $(prop ro.build.version.sdk))
+          - **Build fingerprint**: `$(prop ro.build.fingerprint ro.system.build.fingerprint)`
+          - **Build type**: $(prop ro.build.type) / $(prop ro.build.tags)
+          - **Build ID**: $(prop ro.build.id)
+          - **Security patch**: $(prop ro.build.version.security_patch)
+          - **Raw image size**: $RAW_IMAGE_SIZE ($RAW_IMAGE_BYTES bytes)
+
+          ### Flashing
+
+          Extract the image, then flash it using the device-specific GSI method.
           EOF
           echo "RELEASE_TAG=v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
@@ -156,32 +170,25 @@ jobs:
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "${{ github.event.inputs.output_name }} (Treble GSI)"
-          body: |
-            ## 📱 Generic System Image (GSI) Build
-            - **Source ROM**: `${{ github.event.inputs.rom_url }}`
-            - **OEM Profile**: `${{ github.event.inputs.rom_type }}`
-            - **Filesystem**: `${{ github.event.inputs.fs_type }}`
-            - **Target Architecture**: ARM64 A/B (Project Treble)
-            - **Built on**: ${{ github.run_id }}
-            - **Commit**: `${{ github.sha }}`
-            - **Build report**: `build-info.txt`
-
-            The build report contains the exact input parameters and SHA-256 checksum.
-
-            ### ⚡ Flashing Instructions:
-            ```bash
-            # Unpack the xz archive
-            unxz ${{ github.event.inputs.output_name }}.img.xz
-
-            # Flash via Fastbootd (Dynamic Partitions / Modern Android)
-            fastboot reboot fastboot
-            fastboot flash system ${{ github.event.inputs.output_name }}.img
-            fastboot -w
-            fastboot reboot
-            ```
+          body_path: workspace/output/release-notes.md
           files: |
             workspace/output/*.img.xz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync release to Telegram
+        if: success()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets are not configured; skipping notification."
+            exit 0
+          fi
+          curl --fail --silent --show-error --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=$(cat workspace/output/release-notes.md)"
