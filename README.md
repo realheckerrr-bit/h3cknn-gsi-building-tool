@@ -94,9 +94,10 @@ git push -u origin main
 
 ## 📣 Telegram release notifications
 
-After a successful port build, the workflow can send the release summary and
-actual GSI metadata to Telegram. Add these repository secrets in **Settings →
-Secrets and variables → Actions**:
+After a successful port build, the workflow sends the GSI name, a direct link
+to the matching GitHub Release, and the actual build metadata to Telegram. The
+metadata is hidden in an expandable section. Add these repository secrets in
+**Settings → Secrets and variables → Actions**:
 
 - `TELEGRAM_BOT_TOKEN` — token from [@BotFather](https://t.me/BotFather).
 - `TELEGRAM_CHAT_ID` — the destination user, group, or channel chat ID.

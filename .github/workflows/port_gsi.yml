@@ -105,6 +105,42 @@ jobs:
             printf '%s' "unknown"
           }
 
+          DEVICE_BRAND=$(prop ro.product.system.brand ro.product.brand)
+          DEVICE_MANUFACTURER=$(prop ro.product.system.manufacturer ro.product.manufacturer)
+          DEVICE_MODEL=$(prop ro.product.system.model ro.product.model)
+          DEVICE_CODENAME=$(prop ro.product.system.device ro.product.device)
+          DEVICE_BOARD=$(prop ro.product.board ro.board.platform)
+          ANDROID_VERSION=$(prop ro.build.version.release)
+          ANDROID_SDK=$(prop ro.build.version.sdk)
+          BUILD_FINGERPRINT=$(prop ro.build.fingerprint ro.system.build.fingerprint)
+          BUILD_TYPE=$(prop ro.build.type)
+          BUILD_TAGS=$(prop ro.build.tags)
+          BUILD_ID=$(prop ro.build.id)
+          SECURITY_PATCH=$(prop ro.build.version.security_patch)
+
+          html_escape() {
+            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+          }
+
+          TELEGRAM_GSI_NAME=$(printf '%s' '${{ github.event.inputs.output_name }}' | html_escape)
+          TELEGRAM_DEVICE_BRAND=$(printf '%s' "$DEVICE_BRAND" | html_escape)
+          TELEGRAM_DEVICE_MANUFACTURER=$(printf '%s' "$DEVICE_MANUFACTURER" | html_escape)
+          TELEGRAM_DEVICE_MODEL=$(printf '%s' "$DEVICE_MODEL" | html_escape)
+          TELEGRAM_DEVICE_CODENAME=$(printf '%s' "$DEVICE_CODENAME" | html_escape)
+          TELEGRAM_DEVICE_BOARD=$(printf '%s' "$DEVICE_BOARD" | html_escape)
+          TELEGRAM_ANDROID_VERSION=$(printf '%s' "$ANDROID_VERSION" | html_escape)
+          TELEGRAM_ANDROID_SDK=$(printf '%s' "$ANDROID_SDK" | html_escape)
+          TELEGRAM_BUILD_FINGERPRINT=$(printf '%s' "$BUILD_FINGERPRINT" | html_escape)
+          TELEGRAM_BUILD_TYPE=$(printf '%s' "$BUILD_TYPE" | html_escape)
+          TELEGRAM_BUILD_TAGS=$(printf '%s' "$BUILD_TAGS" | html_escape)
+          TELEGRAM_BUILD_ID=$(printf '%s' "$BUILD_ID" | html_escape)
+          TELEGRAM_SECURITY_PATCH=$(printf '%s' "$SECURITY_PATCH" | html_escape)
+          TELEGRAM_OEM_PROFILE=$(printf '%s' '${{ github.event.inputs.rom_type }}' | html_escape)
+          TELEGRAM_FILESYSTEM=$(printf '%s' '${{ github.event.inputs.fs_type }}' | html_escape)
+          TELEGRAM_COMMIT=$(printf '%s' '${{ github.sha }}' | html_escape)
+          RELEASE_TAG="v$(date +%Y.%m.%d-%H%M%S)"
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+
           cat > build-info.txt <<EOF
           GSI build report
           ================
@@ -150,7 +186,31 @@ jobs:
 
           Extract the image, then flash it using the device-specific GSI method.
           EOF
-          echo "RELEASE_TAG=v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
+          cat > telegram-message.html <<EOF
+          <b>${TELEGRAM_GSI_NAME} (Treble GSI)</b>
+          <a href="${RELEASE_URL}">Open GitHub Release</a>
+
+          <blockquote expandable><b>Build info</b>
+          Device brand: ${TELEGRAM_DEVICE_BRAND}
+          Device manufacturer: ${TELEGRAM_DEVICE_MANUFACTURER}
+          Device model: ${TELEGRAM_DEVICE_MODEL}
+          Device codename: ${TELEGRAM_DEVICE_CODENAME}
+          Device board: ${TELEGRAM_DEVICE_BOARD}
+          Android version: ${TELEGRAM_ANDROID_VERSION}
+          Android SDK: ${TELEGRAM_ANDROID_SDK}
+          Build fingerprint: ${TELEGRAM_BUILD_FINGERPRINT}
+          Build type: ${TELEGRAM_BUILD_TYPE}
+          Build tags: ${TELEGRAM_BUILD_TAGS}
+          Build ID: ${TELEGRAM_BUILD_ID}
+          Security patch: ${TELEGRAM_SECURITY_PATCH}
+          Raw image size: ${RAW_IMAGE_SIZE} (${RAW_IMAGE_BYTES} bytes)
+          OEM profile: ${TELEGRAM_OEM_PROFILE}
+          Filesystem: ${TELEGRAM_FILESYSTEM}
+          Commit: ${TELEGRAM_COMMIT}
+          </blockquote>
+          EOF
+
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
 
       - name: "📤 Upload GSI to GitHub Actions Artifacts"
         uses: actions/upload-artifact@v4
@@ -191,4 +251,5 @@ jobs:
           curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=$(cat workspace/output/release-notes.md)"
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=$(cat workspace/output/telegram-message.html)"
