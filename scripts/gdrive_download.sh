@@ -79,7 +79,9 @@ if command -v gdown &>/dev/null; then
   GDOWN_FILE="$OUTPUT_DIR/gdrive_rom_${FILE_ID}"
   rm -f "$GDOWN_FILE"
   log "==> [GDRIVE] Downloading with gdown..."
-  gdown --fuzzy --no-cookies "$GDRIVE_URL" -O "$GDOWN_FILE" 2>&1 | tee /tmp/gdown.log >&2 || true
+  # The Ubuntu package can be older than gdown releases that support
+  # --fuzzy. A canonical uc?id URL works with both old and new versions.
+  gdown --no-cookies "https://drive.google.com/uc?id=${FILE_ID}" -O "$GDOWN_FILE" 2>&1 | tee /tmp/gdown.log >&2 || true
 
   # Check for quota exceeded
   if grep -q "Too many users have viewed" /tmp/gdown.log 2>/dev/null \
@@ -107,14 +109,21 @@ fi
 log "==> [GDRIVE] Downloading with curl + confirmation bypass..."
 
 CONFIRM_URL="https://drive.google.com/uc?export=download&id=${FILE_ID}"
+CONFIRM_PAGE="/tmp/gdrive_confirm_${FILE_ID}.html"
 
-# First request - get confirmation token for large files
-CONFIRM_TOKEN=$(curl -sc /tmp/gdrive_cookies.txt -fsSL "$CONFIRM_URL" \
-  | grep -oP 'confirm=\K[^&"]+' | head -n1 || true)
+# First request - get the virus-scan confirmation form for large files. Drive
+# now serves this form from drive.usercontent.google.com and puts confirm/uuid
+# in hidden inputs rather than query parameters.
+curl -sc /tmp/gdrive_cookies.txt -fsSL "$CONFIRM_URL" -o "$CONFIRM_PAGE" || true
+CONFIRM_TOKEN=$(grep -oP 'name="confirm" value="\K[^"]+' "$CONFIRM_PAGE" | head -n1 || true)
+CONFIRM_UUID=$(grep -oP 'name="uuid" value="\K[^"]+' "$CONFIRM_PAGE" | head -n1 || true)
 
 if [ -n "$CONFIRM_TOKEN" ]; then
   log "  -> Large file detected; using confirmation token."
-  DOWNLOAD_URL="${CONFIRM_URL}&confirm=${CONFIRM_TOKEN}"
+  DOWNLOAD_URL="https://drive.usercontent.google.com/download?export=download&id=${FILE_ID}&confirm=${CONFIRM_TOKEN}"
+  if [ -n "$CONFIRM_UUID" ]; then
+    DOWNLOAD_URL="${DOWNLOAD_URL}&uuid=${CONFIRM_UUID}"
+  fi
 else
   DOWNLOAD_URL="$CONFIRM_URL"
 fi
@@ -122,6 +131,7 @@ fi
 # Download with cookies (needed for confirmation bypass)
 curl -Lb /tmp/gdrive_cookies.txt \
   --location \
+  --fail \
   --retry 3 \
   --retry-delay 5 \
   --max-time 3600 \
