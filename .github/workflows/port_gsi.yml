@@ -74,6 +74,37 @@ jobs:
         run: |
           cd workspace/output
           sha256sum *.img.xz > SHA256SUMS.txt
+
+          IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
+          RAW_IMAGE_BYTES=$(xz --robot --list "$IMAGE_XZ" | awk -F '\t' '$1 == "totals" { print $5 }')
+          RAW_IMAGE_SIZE=$(numfmt --to=iec-i --suffix=B "$RAW_IMAGE_BYTES")
+
+          BUILD_PROP=""
+          for candidate in \
+            ../system_root/system/build.prop \
+            ../system_root/system/system/build.prop \
+            ../system_root/build.prop; do
+            if [ -f "$candidate" ]; then
+              BUILD_PROP="$candidate"
+              break
+            fi
+          done
+          if [ -z "$BUILD_PROP" ]; then
+            BUILD_PROP=$(find ../system_root -maxdepth 4 -type f -name build.prop -print -quit)
+          fi
+
+          prop() {
+            local key value
+            for key in "$@"; do
+              value=$(grep -m1 "^${key}=" "$BUILD_PROP" | cut -d= -f2- || true)
+              if [ -n "$value" ]; then
+                printf '%s' "$value"
+                return
+              fi
+            done
+            printf '%s' "unknown"
+          }
+
           cat > build-info.txt <<EOF
           GSI build report
           ================
@@ -86,6 +117,21 @@ jobs:
           Commit: ${{ github.sha }}
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          Android build properties:
+          Device brand: $(prop ro.product.system.brand ro.product.brand)
+          Device manufacturer: $(prop ro.product.system.manufacturer ro.product.manufacturer)
+          Device model: $(prop ro.product.system.model ro.product.model)
+          Device codename: $(prop ro.product.system.device ro.product.device)
+          Device board: $(prop ro.product.board ro.board.platform)
+          Android version: $(prop ro.build.version.release)
+          Android SDK: $(prop ro.build.version.sdk)
+          Build fingerprint: $(prop ro.build.fingerprint)
+          Build type: $(prop ro.build.type)
+          Build tags: $(prop ro.build.tags)
+          Build ID: $(prop ro.build.id)
+          Security patch: $(prop ro.build.version.security_patch)
+          Raw Image Size: $RAW_IMAGE_SIZE ($RAW_IMAGE_BYTES bytes)
 
           Checksums:
           $(cat SHA256SUMS.txt)
