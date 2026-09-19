@@ -104,6 +104,9 @@ metadata is hidden in an expandable section. Add these repository secrets in
 
 If either secret is absent, the workflow skips Telegram without failing the build.
 
+
+t.me/h3cknnGSI
+
 ## ⚡ How to Flash the Resulting GSI
 
 1. Extract the downloaded image:
