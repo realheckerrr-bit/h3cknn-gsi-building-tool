@@ -25,7 +25,7 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
 - **Automated GitHub Actions CI/CD:**
   - One-click build via `workflow_dispatch`.
   - Automatic runner disk cleanup (+35GB free space optimization).
-  - Generates `.img.xz` compressed images and publishes directly to GitHub Releases.
+  - Generates `.img.xz` images for normal flashing and `.img.gz` images for DSU Sideloader, then publishes both to GitHub Releases.
 
 ---
 
@@ -81,7 +81,7 @@ git push -u origin main
    - **Output GSI Name**: e.g., `Pixel_14_ARM64_GSI`
    - **OEM Profile**: Select `generic`, `pixel`, `hyperos`, `oneui`, etc.
    - **Output Filesystem**: `ext4` or `erofs`.
-5. Click **Run workflow**. Once finished, the compressed GSI (`.img.xz`) will be published in the **Releases** tab!
+5. Click **Run workflow**. Once finished, the compressed GSI (`.img.xz`) and DSU-compatible GZIP image (`.img.gz`) will be published in the **Releases** tab. For DSU Sideloader, select the `.img.gz` file.
 
 ### 3. Compiling a GSI from Source
 1. In the **Actions** tab, select **"Build Source-Based Treble GSI"**.

@@ -64,16 +64,16 @@ jobs:
         run: |
           chmod +x scripts/*.sh
           bash scripts/port_rom.sh \
-            "${{ github.event.inputs.rom_url }}" \
-            "${{ github.event.inputs.output_name }}" \
-            "${{ github.event.inputs.rom_type }}" \
-            "${{ github.event.inputs.fs_type }}"
+            "${{ inputs.rom_url }}" \
+            "${{ inputs.output_name }}" \
+            "${{ inputs.rom_type }}" \
+            "${{ inputs.fs_type }}"
 
       - name: "🔑 Generate Release Checksums"
         id: checksums
         run: |
           cd workspace/output
-          sha256sum *.img.xz > SHA256SUMS.txt
+          sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
 
           IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
           RAW_IMAGE_BYTES=$(xz --robot --list "$IMAGE_XZ" | awk -F '\t' '$1 == "totals" { print $5 }')
@@ -122,7 +122,7 @@ jobs:
             sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
           }
 
-          TELEGRAM_GSI_NAME=$(printf '%s' '${{ github.event.inputs.output_name }}' | html_escape)
+          TELEGRAM_GSI_NAME=$(printf '%s' '${{ inputs.output_name }}' | html_escape)
           TELEGRAM_DEVICE_BRAND=$(printf '%s' "$DEVICE_BRAND" | html_escape)
           TELEGRAM_DEVICE_MANUFACTURER=$(printf '%s' "$DEVICE_MANUFACTURER" | html_escape)
           TELEGRAM_DEVICE_MODEL=$(printf '%s' "$DEVICE_MODEL" | html_escape)
@@ -135,8 +135,8 @@ jobs:
           TELEGRAM_BUILD_TAGS=$(printf '%s' "$BUILD_TAGS" | html_escape)
           TELEGRAM_BUILD_ID=$(printf '%s' "$BUILD_ID" | html_escape)
           TELEGRAM_SECURITY_PATCH=$(printf '%s' "$SECURITY_PATCH" | html_escape)
-          TELEGRAM_OEM_PROFILE=$(printf '%s' '${{ github.event.inputs.rom_type }}' | html_escape)
-          TELEGRAM_FILESYSTEM=$(printf '%s' '${{ github.event.inputs.fs_type }}' | html_escape)
+          TELEGRAM_OEM_PROFILE=$(printf '%s' '${{ inputs.rom_type }}' | html_escape)
+          TELEGRAM_FILESYSTEM=$(printf '%s' '${{ inputs.fs_type }}' | html_escape)
           TELEGRAM_COMMIT=$(printf '%s' '${{ github.sha }}' | html_escape)
           RELEASE_TAG="v$(date +%Y.%m.%d-%H%M%S)"
           RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
@@ -144,11 +144,11 @@ jobs:
           cat > build-info.txt <<EOF
           GSI build report
           ================
-          Output name: ${{ github.event.inputs.output_name }}
+          Output name: ${{ inputs.output_name }}
           Tool version: $(cat ../../VERSION)
-          Source ROM: ${{ github.event.inputs.rom_url }}
-          OEM profile: ${{ github.event.inputs.rom_type }}
-          Filesystem: ${{ github.event.inputs.fs_type }}
+          Source ROM: ${{ inputs.rom_url }}
+          OEM profile: ${{ inputs.rom_type }}
+          Filesystem: ${{ inputs.fs_type }}
           Target architecture: ARM64 A/B Treble GSI
           Commit: ${{ github.sha }}
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -161,9 +161,9 @@ jobs:
           cat > release-notes.md <<EOF
           ## Generic System Image (GSI) Build
 
-          - **Source ROM**: `${{ github.event.inputs.rom_url }}`
-          - **OEM profile**: `${{ github.event.inputs.rom_type }}`
-          - **Filesystem**: `${{ github.event.inputs.fs_type }}`
+          - **Source ROM**: `${{ inputs.rom_url }}`
+          - **OEM profile**: `${{ inputs.rom_type }}`
+          - **Filesystem**: `${{ inputs.fs_type }}`
           - **Target architecture**: ARM64 A/B (Project Treble)
           - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - **Commit**: `${{ github.sha }}`
@@ -215,9 +215,10 @@ jobs:
       - name: "📤 Upload GSI to GitHub Actions Artifacts"
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.output_name }}
+          name: ${{ inputs.output_name }}
           path: |
             workspace/output/*.img.xz
+            workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
           retention-days: 7
@@ -229,10 +230,11 @@ jobs:
         # are always created after a successful build.
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          name: "${{ github.event.inputs.output_name }} (Treble GSI)"
+          name: "${{ inputs.output_name }} (Treble GSI)"
           body_path: workspace/output/release-notes.md
           files: |
             workspace/output/*.img.xz
+            workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
         env:

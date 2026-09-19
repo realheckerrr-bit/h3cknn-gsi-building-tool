@@ -23,6 +23,7 @@ fi
 RAW_IMG="$OUTPUT_DIR/${OUTPUT_NAME}.raw.img"
 SPARSE_IMG="$OUTPUT_DIR/${OUTPUT_NAME}.img"
 COMPRESSED_IMG="$OUTPUT_DIR/${OUTPUT_NAME}.img.xz"
+DSU_IMG="$OUTPUT_DIR/${OUTPUT_NAME}.img.gz"
 
 echo "==> [REPACK] Source directory: $SYSTEM_ROOT"
 echo "==> [REPACK] Target format: $FS_TYPE"
@@ -78,13 +79,17 @@ else
 fi
 
 echo "==> [REPACK] Compressing final GSI with XZ (high compression)..."
-# BUG FIX: Use -f (force overwrite) and remove -k (no keep) to save disk space
+# Keep the sparse image long enough to create both release formats.  DSU
+# Sideloader accepts XZ, but GZIP is also supported by Android's DSU path and
+# is more compatible with older Samsung gsid implementations.
+gzip -9 -c "$SPARSE_IMG" > "$DSU_IMG"
 xz -9 -T0 -f "$SPARSE_IMG"
-# After xz without -k, the source .img is replaced by .img.xz
+# After xz without -k, the source .img is replaced by .img.xz.
 COMPRESSED_IMG="${SPARSE_IMG}.xz"
 
 echo "================================================================="
 echo "==> [REPACK] GSI BUILT SUCCESSFULLY!"
 echo "  Compressed path: $COMPRESSED_IMG"
+echo "  DSU path:        $DSU_IMG"
 echo "  Final Size:      $(du -h "$COMPRESSED_IMG" | cut -f1)"
 echo "================================================================="
