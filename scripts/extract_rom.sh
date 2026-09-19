@@ -66,8 +66,12 @@ echo "==> [EXTRACT] Unpacking archive container..."
 FILE_TYPE=$(file -b "$ROM_FILE" | tr '[:upper:]' '[:lower:]')
 FILE_EXT="${ROM_FILE##*.}"
 FILE_EXT=$(echo "$FILE_EXT" | cut -d'?' -f1 | tr '[:upper:]' '[:lower:]')
+FILE_MAGIC=$(od -An -tx1 -N4 "$ROM_FILE" 2>/dev/null | tr -d '[:space:]' || true)
 
-if echo "$FILE_TYPE" | grep -q "zip archive"; then
+# Google Drive downloads are deliberately saved without the original extension.
+# Detect ZIP containers from their magic bytes so an OTA ZIP is not mistaken for
+# a raw payload.bin merely because `file` reports generic Android/data content.
+if [ "$FILE_MAGIC" = "504b0304" ] || echo "$FILE_TYPE" | grep -q "zip archive"; then
   7z x -y "$ROM_FILE" -o"$EXTRACT_DIR"
 elif echo "$FILE_TYPE" | grep -q "gzip\|tar"; then
   tar -xf "$ROM_FILE" -C "$EXTRACT_DIR"
