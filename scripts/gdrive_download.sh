@@ -24,9 +24,15 @@ set -eo pipefail
 GDRIVE_URL="${1:-}"
 OUTPUT_DIR="${2:-$(pwd)}"
 
+# This script is called through command substitution. Keep stdout exclusively
+# for the final downloaded file path; send status and diagnostics to stderr.
+log() {
+  printf '%s\n' "$*" >&2
+}
+
 if [ -z "$GDRIVE_URL" ]; then
-  echo "[-] ERROR: Google Drive URL is required as argument 1."
-  echo "Usage: ./gdrive_download.sh <GDRIVE_URL> <OUTPUT_DIR>"
+  log "[-] ERROR: Google Drive URL is required as argument 1."
+  log "Usage: ./gdrive_download.sh <GDRIVE_URL> <OUTPUT_DIR>"
   exit 1
 fi
 
@@ -46,7 +52,7 @@ extract_gdrive_id() {
   # Format: /folders/FOLDER_ID
   elif echo "$url" | grep -qP '/folders/([a-zA-Z0-9_-]+)'; then
     file_id=$(echo "$url" | grep -oP '/folders/\K[a-zA-Z0-9_-]+')
-    echo "[!] WARNING: Folder URL detected. Will download first file in folder." >&2
+    log "[!] WARNING: Folder URL detected. Will download first file in folder."
   fi
 
   echo "$file_id"
@@ -55,47 +61,50 @@ extract_gdrive_id() {
 FILE_ID=$(extract_gdrive_id "$GDRIVE_URL")
 
 if [ -z "$FILE_ID" ]; then
-  echo "[-] ERROR: Could not extract a Google Drive file ID from URL:"
-  echo "    $GDRIVE_URL"
-  echo ""
-  echo "    Supported formats:"
-  echo "      https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
-  echo "      https://drive.google.com/open?id=FILE_ID"
-  echo "      https://drive.google.com/uc?id=FILE_ID"
+  log "[-] ERROR: Could not extract a Google Drive file ID from URL:"
+  log "    $GDRIVE_URL"
+  log ""
+  log "    Supported formats:"
+  log "      https://drive.google.com/file/d/FILE_ID/view?usp=sharing"
+  log "      https://drive.google.com/open?id=FILE_ID"
+  log "      https://drive.google.com/uc?id=FILE_ID"
   exit 1
 fi
 
-echo "==> [GDRIVE] File ID: $FILE_ID"
-echo "==> [GDRIVE] Output directory: $OUTPUT_DIR"
+log "==> [GDRIVE] File ID: $FILE_ID"
+log "==> [GDRIVE] Output directory: $OUTPUT_DIR"
 
 # ── Method 1: gdown (best - handles large files + confirmation automatically) 
 if command -v gdown &>/dev/null; then
-  echo "==> [GDRIVE] Downloading with gdown..."
-  gdown --fuzzy --no-cookies "$GDRIVE_URL" -O "$OUTPUT_DIR/" 2>&1 | tee /tmp/gdown.log || true
+  GDOWN_FILE="$OUTPUT_DIR/gdrive_rom_${FILE_ID}"
+  rm -f "$GDOWN_FILE"
+  log "==> [GDRIVE] Downloading with gdown..."
+  gdown --fuzzy --no-cookies "$GDRIVE_URL" -O "$GDOWN_FILE" 2>&1 | tee /tmp/gdown.log >&2 || true
 
   # Check for quota exceeded
   if grep -q "Too many users have viewed" /tmp/gdown.log 2>/dev/null \
     || grep -q "quota" /tmp/gdown.log 2>/dev/null; then
-    echo "[-] ERROR: Google Drive download quota exceeded for this file."
-    echo "    Please use a different sharing method (direct URL, Telegram, etc.)"
+    log "[-] ERROR: Google Drive download quota exceeded for this file."
+    log "    Please use a different sharing method (direct URL, Telegram, etc.)"
     exit 1
   fi
 
-  DOWNLOADED_FILE=$(find "$OUTPUT_DIR" -maxdepth 1 -type f \
-    ! -name "*.aria2" ! -name "*.tmp" ! -name "gdown.log" \
-    | sort -t_ -k1 | tail -n 1)
-
-  if [ -n "$DOWNLOADED_FILE" ] && [ -s "$DOWNLOADED_FILE" ]; then
-    echo "==> [GDRIVE] Downloaded: $(basename "$DOWNLOADED_FILE") ($(du -h "$DOWNLOADED_FILE" | cut -f1))"
-    echo "$DOWNLOADED_FILE"
-    exit 0
+  if [ -s "$GDOWN_FILE" ]; then
+    FILETYPE=$(file -b "$GDOWN_FILE" | tr '[:upper:]' '[:lower:]')
+    if ! echo "$FILETYPE" | grep -q "html\|ascii\|utf-8"; then
+      log "==> [GDRIVE] Downloaded: $(basename "$GDOWN_FILE") ($(du -h "$GDOWN_FILE" | cut -f1))"
+      printf '%s\n' "$GDOWN_FILE"
+      exit 0
+    fi
+    log "[!] gdown returned HTML instead of a ROM; trying curl fallback..."
+    rm -f "$GDOWN_FILE"
   fi
 
-  echo "[!] gdown finished but no file found, trying fallback method..."
+  log "[!] gdown finished without a valid ROM, trying curl fallback..."
 fi
 
 # ── Method 2: curl with confirmation cookie bypass (for large files) ─────────
-echo "==> [GDRIVE] Downloading with curl + confirmation bypass..."
+log "==> [GDRIVE] Downloading with curl + confirmation bypass..."
 
 CONFIRM_URL="https://drive.google.com/uc?export=download&id=${FILE_ID}"
 
@@ -104,7 +113,7 @@ CONFIRM_TOKEN=$(curl -sc /tmp/gdrive_cookies.txt -fsSL "$CONFIRM_URL" \
   | grep -oP 'confirm=\K[^&"]+' | head -n1 || true)
 
 if [ -n "$CONFIRM_TOKEN" ]; then
-  echo "  -> Large file detected, using confirmation token: $CONFIRM_TOKEN"
+  log "  -> Large file detected; using confirmation token."
   DOWNLOAD_URL="${CONFIRM_URL}&confirm=${CONFIRM_TOKEN}"
 else
   DOWNLOAD_URL="$CONFIRM_URL"
@@ -122,27 +131,27 @@ curl -Lb /tmp/gdrive_cookies.txt \
 DOWNLOADED_FILE=$(find "$OUTPUT_DIR" -maxdepth 1 -name "gdrive_rom_${FILE_ID}" -type f | head -n1)
 
 if [ -z "$DOWNLOADED_FILE" ] || [ ! -s "$DOWNLOADED_FILE" ]; then
-  echo "[-] ERROR: All download methods failed for Google Drive file ID: $FILE_ID"
-  echo "    Please check:"
-  echo "      1. The file is shared as 'Anyone with the link'"
-  echo "      2. The file is not over the download quota"
-  echo "      3. The URL is correct"
+  log "[-] ERROR: All download methods failed for Google Drive file ID: $FILE_ID"
+  log "    Please check:"
+  log "      1. The file is shared as 'Anyone with the link'"
+  log "      2. The file is not over the download quota"
+  log "      3. The URL is correct"
   exit 1
 fi
 
 # ── Detect if what we got is HTML (quota/auth error) instead of a ROM ────────
 FILETYPE=$(file -b "$DOWNLOADED_FILE" | tr '[:upper:]' '[:lower:]')
 if echo "$FILETYPE" | grep -q "html\|ascii\|utf-8"; then
-  echo "[-] ERROR: Downloaded file appears to be HTML, not a ROM."
-  echo "    This usually means:"
-  echo "      - File requires Google account login"
-  echo "      - Download quota exceeded"
-  echo "      - File ID is invalid"
-  cat "$DOWNLOADED_FILE" | head -5
+  log "[-] ERROR: Downloaded file appears to be HTML, not a ROM."
+  log "    This usually means:"
+  log "      - File requires Google account login"
+  log "      - Download quota exceeded"
+  log "      - File ID is invalid"
+  head -n 5 "$DOWNLOADED_FILE" >&2 || true
   rm -f "$DOWNLOADED_FILE"
   exit 1
 fi
 
 # ── Try to rename to real filename from Content-Disposition header ────────────
-echo "==> [GDRIVE] Downloaded: $(basename "$DOWNLOADED_FILE") ($(du -h "$DOWNLOADED_FILE" | cut -f1))"
-echo "$DOWNLOADED_FILE"
+log "==> [GDRIVE] Downloaded: $(basename "$DOWNLOADED_FILE") ($(du -h "$DOWNLOADED_FILE" | cut -f1))"
+printf '%s\n' "$DOWNLOADED_FILE"
