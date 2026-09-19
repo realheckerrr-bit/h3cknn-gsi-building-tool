@@ -53,15 +53,6 @@ jobs:
           chmod +x scripts/clean_disk.sh
           bash scripts/clean_disk.sh
 
-      # clean_disk.sh intentionally deletes /usr/lib/jvm to free space. The
-      # Android SDK tools need a valid JDK before sdkmanager or the emulator
-      # runner is invoked.
-      - name: Set up Java for Android SDK tools
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
       - name: "⚙️ Setup Build Dependencies"
         run: |
           chmod +x scripts/setup_deps.sh
@@ -130,8 +121,6 @@ jobs:
             - **Build report**: `build-info.txt`
 
             The build report contains the exact input parameters and SHA-256 checksum.
-            After the build, the workflow attempts to attach Android emulator screenshots
-            (`build-info.png` and `home-screen.png`) to this same release.
 
             ### ⚡ Flashing Instructions:
             ```bash
@@ -148,60 +137,5 @@ jobs:
             workspace/output/*.img.xz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable KVM for Android emulator
-        continue-on-error: true
-        run: |
-          sudo chmod 666 /dev/kvm
-          ls -l /dev/kvm
-
-      - name: Install Android emulator packages
-        run: |
-          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install \
-            "platform-tools" \
-            "emulator" \
-            "platforms;android-30" \
-            "system-images;android-30;google_apis;x86_64"
-
-      - name: Boot Android emulator and capture screenshots
-        continue-on-error: true
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
-          emulator-boot-timeout: 600
-          disable-animations: true
-          script: |
-            chmod +x scripts/capture_android_screenshots.sh
-            bash scripts/capture_android_screenshots.sh android-screenshots
-
-      - name: Upload screenshots to GitHub Actions
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.inputs.output_name }}-android-screenshots
-          path: android-screenshots/
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Attach screenshots to the GSI release
-        if: always()
-        continue-on-error: true
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          files: |
-            android-screenshots/build-info.png
-            android-screenshots/home-screen.png
-            android-screenshots/build-properties.txt
-            workspace/output/build-info.txt
-          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
