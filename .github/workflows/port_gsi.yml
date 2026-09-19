@@ -53,6 +53,15 @@ jobs:
           chmod +x scripts/clean_disk.sh
           bash scripts/clean_disk.sh
 
+      # clean_disk.sh intentionally deletes /usr/lib/jvm to free space. The
+      # Android SDK tools need a valid JDK before sdkmanager or the emulator
+      # runner is invoked.
+      - name: Set up Java for Android SDK tools
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: "⚙️ Setup Build Dependencies"
         run: |
           chmod +x scripts/setup_deps.sh
