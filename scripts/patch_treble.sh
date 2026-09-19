@@ -102,6 +102,15 @@ set_prop "ro.debuggable" "1"
 #   "<original_build_number> via h3cknnGSI_tool"
 echo "==> [TREBLE-PATCH] Stamping h3cknnGSI_tool branding into build number..."
 
+# A ported GSI is not an OEM or ROM-project official release.  Replace only a
+# standalone "official" word so existing "unofficial" labels are untouched.
+# This affects Settings strings such as ro.build.display.id and ROM version
+# properties before they are copied into the final GSI image.
+echo "==> [TREBLE-PATCH] Marking ported build as UNOFFICIAL..."
+"${SUDO[@]}" sed -i -E \
+  's/(^|[^[:alnum:]_])[Oo][Ff][Ff][Ii][Cc][Ii][Aa][Ll]([^[:alnum:]_]|$)/\1UNOFFICIAL\2/g' \
+  "$BUILD_PROP"
+
 # Read current ro.build.display.id (shown as "Build number" in Settings)
 ORIG_BUILD_ID=$(grep -m1 "^ro\.build\.display\.id=" "$BUILD_PROP" \
   | cut -d'=' -f2- | xargs 2>/dev/null || true)
@@ -131,6 +140,8 @@ fi
 set_prop "ro.h3cknn.gsi.builder" "h3cknnGSI_tool"
 set_prop "ro.h3cknn.gsi.version"  "$(date +%Y%m%d)"
 set_prop "ro.h3cknn.gsi.profile"  "$ROM_TYPE"
+set_prop "ro.h3cknn.gsi.release_type" "unofficial"
+set_prop "ro.h3cknn.gsi.official" "false"
 echo "  [+] ro.h3cknn.gsi.* properties set."
 
 
