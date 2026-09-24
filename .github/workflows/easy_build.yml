@@ -164,3 +164,26 @@ jobs:
             workspace/output/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync release to Telegram
+        if: success()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets are not configured; skipping notification."
+            exit 0
+          fi
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable>Build info is attached to the release.</blockquote>' "$OUTPUT_NAME_INPUT" "$RELEASE_URL")
+          if ! curl --fail --silent --show-error --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=${TELEGRAM_TEXT}"; then
+            echo "::warning::Telegram notification failed. Check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID secrets."
+          fi

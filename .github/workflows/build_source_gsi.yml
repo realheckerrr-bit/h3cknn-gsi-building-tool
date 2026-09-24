@@ -122,3 +122,26 @@ jobs:
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync release to Telegram
+        if: success()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          TELEGRAM_GSI_NAME: ${{ inputs.variant }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets are not configured; skipping notification."
+            exit 0
+          fi
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+          TELEGRAM_TEXT=$(printf '<b>%s Source GSI</b>\n<a href="%s">Open GitHub Release</a>' "$TELEGRAM_GSI_NAME" "$RELEASE_URL")
+          if ! curl --fail --silent --show-error --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=${TELEGRAM_TEXT}"; then
+            echo "::warning::Telegram notification failed. Check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID secrets."
+          fi
