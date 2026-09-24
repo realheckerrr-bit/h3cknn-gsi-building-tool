@@ -75,7 +75,7 @@ echo "==> [SAMSUNG-SUPER] GSI input: $(basename "$GSI_INPUT")"
 # Accept either a standalone super image or a stock AP tar containing
 # super.img.lz4.  The AP is only used as the source of stock logical partitions.
 STOCK_SOURCE="$STOCK_INPUT"
-AP_VBMETA_SOURCE=""
+AP_VBMETA_SOURCES=()
 STOCK_TYPE=$(file -b "$STOCK_SOURCE" | tr '[:upper:]' '[:lower:]')
 if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
   || printf '%s' "$STOCK_INPUT" | grep -Eiq '\.tar(\.md5)?$'; then
@@ -87,7 +87,13 @@ if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
     echo "[-] ERROR: AP archive does not contain super.img or super.img.lz4." >&2
     exit 1
   fi
-  AP_VBMETA_SOURCE=$(find "$AP_DIR" -type f -name 'vbmeta.img.lz4' -print -quit)
+  mapfile -t AP_VBMETA_SOURCES < <(
+    find "$AP_DIR" -type f \( \
+      -name 'vbmeta.img.lz4' \
+      -o -name 'vbmeta_system.img.lz4' \
+      -o -name 'vbmeta_vendor.img.lz4' \
+    \) -print | sort
+  )
 fi
 
 STOCK_IMAGE="$TEMP_DIR/stock.super.img"
@@ -292,7 +298,11 @@ SUPER_LZ4_OUT="$OUTPUT_DIR/super.img.lz4"
 RAW_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-super-only.tar"
 ODIN_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-odin.tar"
 BOOT_LZ4_OUT="$OUTPUT_DIR/boot.img.lz4"
-rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT" "$BOOT_LZ4_OUT"
+rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT" \
+  "$BOOT_LZ4_OUT" \
+  "$OUTPUT_DIR/vbmeta.img.lz4" \
+  "$OUTPUT_DIR/vbmeta_system.img.lz4" \
+  "$OUTPUT_DIR/vbmeta_vendor.img.lz4"
 
 echo "==> [SAMSUNG-SUPER] Rebuilding stock logical-partition metadata..."
 lpmake "${LPM_ARGS[@]}" --sparse --output "$SUPER_OUT"
@@ -323,16 +333,20 @@ fi
 
 tar -cf "$RAW_TAR_OUT" -C "$OUTPUT_DIR" "$(basename "$SUPER_OUT")"
 
-ODIN_STATUS="Not created: supply the exact matching AP.tar.md5 so vbmeta can be preserved and patched."
+ODIN_STATUS="Not created: supply the exact matching AP.tar.md5 so vbmeta images can be preserved and patched."
 BOOT_STATUS="Not included: no explicit exact-device boot image was supplied."
 VBMETA_READY=0
+VBMETA_ROOT_FOUND=0
 ODIN_MEMBERS=("$(basename "$SUPER_LZ4_OUT")")
-if [ -n "$AP_VBMETA_SOURCE" ] && [ -f "$AP_VBMETA_SOURCE" ]; then
-  VBMETA_IMAGE="$TEMP_DIR/vbmeta.img"
-  VBMETA_LZ4_OUT="$OUTPUT_DIR/vbmeta.img.lz4"
+VBMETA_NAMES=()
+if [ "${#AP_VBMETA_SOURCES[@]}" -gt 0 ]; then
   echo "==> [SAMSUNG-SUPER] Patching matching AP vbmeta AVB flags..."
-  lz4 -dc -- "$AP_VBMETA_SOURCE" > "$VBMETA_IMAGE"
-  python3 - "$VBMETA_IMAGE" <<'PY'
+  for AP_VBMETA_SOURCE in "${AP_VBMETA_SOURCES[@]}"; do
+    VBMETA_NAME=$(basename "$AP_VBMETA_SOURCE")
+    VBMETA_IMAGE="$TEMP_DIR/$VBMETA_NAME"
+    VBMETA_LZ4_OUT="$OUTPUT_DIR/$VBMETA_NAME"
+    lz4 -dc -- "$AP_VBMETA_SOURCE" > "$VBMETA_IMAGE"
+    python3 - "$VBMETA_IMAGE" <<'PY'
 import pathlib
 import struct
 import sys
@@ -347,17 +361,26 @@ struct.pack_into(">I", data, 120, new_flags)
 path.write_bytes(data)
 print(f"vbmeta flags: 0x{old_flags:08x} -> 0x{new_flags:08x}")
 PY
-  rm -f -- "$VBMETA_LZ4_OUT"
-  lz4 -f -B6 --content-size "$VBMETA_IMAGE" "$VBMETA_LZ4_OUT" >/dev/null
-  VBMETA_LZ4_MAGIC=$(od -An -tx1 -N5 "$VBMETA_LZ4_OUT" 2>/dev/null | tr -d '[:space:]')
-  if [ "$VBMETA_LZ4_MAGIC" != "04224d186c" ]; then
-    echo "[-] ERROR: lz4 did not create a Samsung vbmeta frame (magic: $VBMETA_LZ4_MAGIC)." >&2
-    exit 1
+    rm -f -- "$VBMETA_LZ4_OUT"
+    lz4 -f -B6 --content-size "$VBMETA_IMAGE" "$VBMETA_LZ4_OUT" >/dev/null
+    VBMETA_LZ4_MAGIC=$(od -An -tx1 -N5 "$VBMETA_LZ4_OUT" 2>/dev/null | tr -d '[:space:]')
+    if [ "$VBMETA_LZ4_MAGIC" != "04224d186c" ]; then
+      echo "[-] ERROR: lz4 did not create a Samsung vbmeta frame (magic: $VBMETA_LZ4_MAGIC)." >&2
+      exit 1
+    fi
+    ODIN_MEMBERS+=("$(basename "$VBMETA_LZ4_OUT")")
+    VBMETA_NAMES+=("$VBMETA_NAME")
+    if [ "$VBMETA_NAME" = "vbmeta.img.lz4" ]; then
+      VBMETA_ROOT_FOUND=1
+    fi
+  done
+  if [ "$VBMETA_ROOT_FOUND" = "1" ]; then
+    VBMETA_READY=1
+  else
+    echo "==> [SAMSUNG-SUPER] Root vbmeta.img.lz4 is missing; Odin tar will not be created." >&2
   fi
-  ODIN_MEMBERS+=("$(basename "$VBMETA_LZ4_OUT")")
-  VBMETA_READY=1
 else
-  echo "==> [SAMSUNG-SUPER] No vbmeta.img.lz4 found; Odin tar will not be created."
+  echo "==> [SAMSUNG-SUPER] No supported vbmeta images found; Odin tar will not be created."
 fi
 
 # Some Exynos 850 Android 14 installations need a device-specific custom
@@ -431,7 +454,7 @@ Samsung LZ4 image: $(basename "$SUPER_LZ4_OUT")
 Odin package: $ODIN_STATUS
 Boot image: $BOOT_STATUS
 Removed logical partitions: ${REMOVED_PARTITIONS[*]:-none}
-AVB: matching AP vbmeta has flags 0x03 only when the Odin package was created
+AVB images: ${VBMETA_NAMES[*]:-none}; patched flags include 0x03 only for matching AP images
 Warning: use only with the exact matching Samsung model/AP/firmware. Factory reset and device-specific multidisabler/kernel steps may still be required.
 EOF
 

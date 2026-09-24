@@ -125,17 +125,17 @@ jobs:
           body: |
             ## Samsung stock-super GSI package
 
-            This package replaces only the `system` logical partition in the supplied stock super image.
+            This package replaces the `system` logical partition in the supplied stock super image and can remove the stock `product` logical partition when selected.
 
             - **Device model**: `${{ inputs.device_model }}`
             - **Stock source**: `${{ inputs.stock_url }}`
             - **GSI source**: `${{ inputs.gsi_url }}`
-            - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains its matching `vbmeta.img.lz4`.
+            - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains supported matching vbmeta images; root/system/vendor vbmeta images present in that AP are patched and included.
             - **Optional boot**: an explicitly supplied exact-device `boot.img.lz4` is included when provided; do not use a foreign kernel.
             - **Product**: `${{ inputs.remove_product }}` (removing Samsung product is recommended for Exynos 850 GSI packages).
             - **Preserved**: stock vendor/odm/system_ext, recovery, and kernel files; boot is replaced only when the optional exact-device boot input is supplied.
 
-            The Odin tar contains Samsung content-size LZ4 `super.img.lz4` plus the matching AP vbmeta
+            The Odin tar contains Samsung content-size LZ4 `super.img.lz4` plus the matching AP vbmeta images
             with AVB disable flags. Use the exact matching Samsung firmware, recovery, multidisabler,
             factory-reset, and kernel procedure for the device. Do not use it on another model.
           files: |
