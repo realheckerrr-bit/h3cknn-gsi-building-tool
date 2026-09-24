@@ -65,12 +65,21 @@ echo "==> [TREBLE-PATCH] Patching properties in: $BUILD_PROP"
 # Ensure write permissions
 "${SUDO[@]}" chmod 644 "$BUILD_PROP"
 
+# Escape characters that have replacement-string meaning in sed.  Build
+# descriptions and fingerprints can legally contain '&' and other punctuation;
+# inserting them unescaped can corrupt build.prop and cause an early bootloop.
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[\\&|]/\\&/g'
+}
+
 # Helper function to set or replace property
 set_prop() {
   local key="$1"
   local val="$2"
+  local escaped_val
+  escaped_val=$(escape_sed_replacement "$val")
   if grep -q "^${key}=" "$BUILD_PROP"; then
-    "${SUDO[@]}" sed -i "s|^${key}=.*|${key}=${val}|" "$BUILD_PROP"
+    "${SUDO[@]}" sed -i "s|^${key}=.*|${key}=${escaped_val}|" "$BUILD_PROP"
   else
     printf '%s\n' "${key}=${val}" | "${SUDO[@]}" tee -a "$BUILD_PROP" > /dev/null
   fi
