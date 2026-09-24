@@ -24,6 +24,7 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
   - Injects **TrebleApp** (`packages/apps/TrebleApp`) for hardware toggles (VoLTE, fingerprint scanner, high refresh rates).
   - Detects direct community GSI inputs and preserves their original sparse/filesystem layout instead of unpacking and rebuilding them. Set `FORCE_REPACK_GSI=1` only when deliberately converting an OEM system image.
   - The OEM repack path is experimental; it cannot create a complete bootable Samsung ROM without the matching device vendor, boot image/kernel, vbmeta, and recovery setup.
+  - Provides an opt-in Samsung stock-super workflow that replaces only `system` while preserving logical partitions from a matching stock super/AP image.
 - **Automated GitHub Actions CI/CD:**
   - One-click build via `workflow_dispatch`.
   - Automatic runner disk cleanup (+35GB free space optimization).
@@ -38,7 +39,8 @@ gsi-builder-tool/
 ├── .github/
 │   └── workflows/
 │       ├── port_gsi.yml           # GitHub Actions workflow: OEM ROM to GSI
-│       └── build_source_gsi.yml   # GitHub Actions workflow: Source GSI Builder
+│       ├── build_source_gsi.yml   # GitHub Actions workflow: Source GSI Builder
+│       └── build_samsung_super.yml # Workflow: matching stock-super package
 ├── configs/
 │   └── default_props.txt          # Universal Project Treble system properties
 ├── scripts/
@@ -47,6 +49,7 @@ gsi-builder-tool/
 │   ├── patch_treble.sh            # Treble compatibility and overlay patcher
 │   ├── port_rom.sh                # Master end-to-end porting runner
 │   ├── repack_gsi.sh              # Formatter (ext4/erofs) & sparse converter
+│   ├── build_samsung_super.sh     # Replace system in matching stock super
 │   └── setup_deps.sh              # Installs all required Linux packages & tools
 ├── source/
 │   ├── manifests/
@@ -92,6 +95,18 @@ git push -u origin main
    - **Variant**: `treble_arm64_bvN` (Vanilla) or `treble_arm64_bgN` (with GApps)
    - **Build Type**: `userdebug`
 3. Click **Run workflow**.
+
+### 4. Building a Samsung stock-super package
+
+Use **Build Samsung Super GSI Package** only with the exact stock firmware for
+the phone. Provide a direct URL to the matching `AP.tar.md5`, `super.img.lz4`,
+or `super.img`, the GSI URL, and the exact model. The workflow preserves the
+stock logical partitions and replaces only `system`; it does not provide or
+modify boot, vendor, vbmeta, recovery, or kernel files.
+
+The resulting `.tar` remains device-specific. Follow the matching Samsung
+recovery, multidisabler, data-format, and kernel procedure. A package made
+from another M12 regional firmware is not safe to flash.
 
 ## 📣 Telegram release notifications
 

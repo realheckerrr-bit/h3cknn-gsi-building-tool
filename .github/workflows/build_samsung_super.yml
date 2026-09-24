@@ -1,0 +1,141 @@
+name: "Build Samsung Super GSI Package"
+
+on:
+  workflow_dispatch:
+    inputs:
+      stock_url:
+        description: "Direct URL to the matching stock AP.tar.md5, super.img.lz4, or super.img"
+        required: true
+        type: string
+      gsi_url:
+        description: "Direct URL to the GSI .img.xz, .img.gz, or .img"
+        required: true
+        type: string
+      device_model:
+        description: "Exact Samsung model, for example SM-M127F"
+        required: true
+        type: string
+      output_name:
+        description: "Output package name"
+        required: true
+        default: "M12_GSI_Super"
+        type: string
+      gsi_format:
+        description: "Format of the downloaded GSI URL"
+        required: true
+        default: "img.xz"
+        type: choice
+        options:
+          - "img.xz"
+          - "img.gz"
+          - "img"
+
+permissions:
+  contents: write
+
+jobs:
+  build_samsung_super:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: bash scripts/clean_disk.sh
+
+      - name: Install dependencies
+        run: bash scripts/setup_deps.sh
+
+      - name: Download matching stock and GSI inputs
+        env:
+          STOCK_URL_INPUT: ${{ inputs.stock_url }}
+          GSI_URL_INPUT: ${{ inputs.gsi_url }}
+          GSI_FORMAT_INPUT: ${{ inputs.gsi_format }}
+        run: |
+          mkdir -p workspace/samsung-inputs
+          curl --fail --location --retry 3 --retry-delay 5 \
+            "$STOCK_URL_INPUT" -o workspace/samsung-inputs/stock-input
+          curl --fail --location --retry 3 --retry-delay 5 \
+            "$GSI_URL_INPUT" -o "workspace/samsung-inputs/gsi.$GSI_FORMAT_INPUT"
+
+      - name: Build and validate Samsung super package
+        env:
+          DEVICE_MODEL_INPUT: ${{ inputs.device_model }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+        run: |
+          chmod +x scripts/*.sh
+          SAMSUNG_DEVICE_MODEL="$DEVICE_MODEL_INPUT" \
+            bash scripts/build_samsung_super.sh \
+              workspace/samsung-inputs/stock-input \
+              workspace/samsung-inputs/gsi.* \
+              "$OUTPUT_NAME_INPUT" \
+              workspace/samsung-work \
+              workspace/output
+          cd workspace/output
+          sha256sum *.tar super.img *.build-info.txt > SHA256SUMS.txt
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.output_name }}
+          path: |
+            workspace/output/*.tar
+            workspace/output/super.img
+            workspace/output/*.build-info.txt
+            workspace/output/SHA256SUMS.txt
+          retention-days: 14
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "samsung-${{ github.run_id }}"
+          name: "${{ inputs.output_name }} (${{ inputs.device_model }})"
+          body: |
+            ## Samsung stock-super GSI package
+
+            This package replaces only the `system` logical partition in the supplied stock super image.
+
+            - **Device model**: `${{ inputs.device_model }}`
+            - **Stock source**: `${{ inputs.stock_url }}`
+            - **GSI source**: `${{ inputs.gsi_url }}`
+            - **Preserved**: stock vendor/product/odm/system_ext and all boot, recovery, vbmeta, and kernel files
+
+            This is not a complete firmware package. Use the exact matching Samsung firmware, recovery,
+            multidisabler, and kernel procedure for the device. Do not use this package on another model.
+          files: |
+            workspace/output/*.tar
+            workspace/output/super.img
+            workspace/output/*.build-info.txt
+            workspace/output/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync release to Telegram
+        if: success()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DEVICE_MODEL_INPUT: ${{ inputs.device_model }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets are not configured; skipping notification."
+            exit 0
+          fi
+          RELEASE_TAG="samsung-${GITHUB_RUN_ID}"
+          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/${RELEASE_TAG}"
+          html_escape() {
+            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+          }
+          NAME_ESCAPED=$(printf '%s' "$OUTPUT_NAME_INPUT" | html_escape)
+          MODEL_ESCAPED=$(printf '%s' "$DEVICE_MODEL_INPUT" | html_escape)
+          TEXT=$(printf '<b>%s Samsung Super GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nDevice: %s\nSystem-only replacement inside matching stock super\n</blockquote>' \
+            "$NAME_ESCAPED" "$RELEASE_URL" "$MODEL_ESCAPED")
+          curl --fail --silent --show-error --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=${TEXT}" || \
+            echo "::warning::Telegram notification failed."
