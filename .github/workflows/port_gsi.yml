@@ -242,6 +242,10 @@ jobs:
 
       - name: Sync release to Telegram
         if: success()
+        # A Telegram outage or rotated token must not invalidate a completed
+        # GSI build and GitHub release. The step still prints curl's error so
+        # the secret can be corrected without hiding the notification failure.
+        continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
