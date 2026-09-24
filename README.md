@@ -122,6 +122,12 @@ Image**, select the extracted `.img`, choose **System Image**, and wipe data
 before the first boot. The exact recovery and vendor firmware must match the
 phone model.
 
+For Galaxy M12/A12-family devices, the GSI is only the system partition. A
+bootloop can still come from the Samsung vendor, AVB/multidisabler state, the
+device-specific recovery, or the kernel. Keep the stock vendor/firmware for
+the exact model and use the matching recovery/kernel instructions before
+blaming the downloaded image.
+
 ### Fastboot-based devices
 
 1. Extract the downloaded image:
