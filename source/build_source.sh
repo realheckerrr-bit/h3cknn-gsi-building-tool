@@ -51,7 +51,22 @@ cp "$SYSTEM_IMG" "$FINAL_IMG"
 echo "==> [SOURCE-BUILD] Compressing output with XZ..."
 xz -9 -T0 -k "$FINAL_IMG"
 echo "==> [SOURCE-BUILD] Compressing output with GZIP for DSU Sideloader..."
-gzip -9 -c "$FINAL_IMG" > "${FINAL_IMG}.gz"
+# Android build outputs are commonly sparse. Keep that layout in the XZ
+# flashing asset, but provide DSU with a raw, unsparsed filesystem image.
+DSU_SOURCE="$FINAL_IMG"
+DSU_RAW_IMG="$OUT_DIR/.${OUTPUT_BASENAME}.dsu.raw.img"
+IMAGE_MAGIC=$(od -An -tx1 -N4 "$FINAL_IMG" 2>/dev/null | tr -d '[:space:]')
+if [ "$IMAGE_MAGIC" = "3aff26ed" ]; then
+  if ! command -v simg2img >/dev/null 2>&1; then
+    echo "[-] ERROR: Sparse source image detected, but simg2img is unavailable for DSU output." >&2
+    exit 1
+  fi
+  echo "==> [SOURCE-BUILD] Expanding sparse image for the DSU GZIP asset..."
+  simg2img "$FINAL_IMG" "$DSU_RAW_IMG"
+  DSU_SOURCE="$DSU_RAW_IMG"
+fi
+gzip -9 -c "$DSU_SOURCE" > "${FINAL_IMG}.gz"
+rm -f -- "$DSU_RAW_IMG"
 
 echo "================================================================="
 echo "==> [SOURCE-BUILD] BUILD SUCCEEDED!"

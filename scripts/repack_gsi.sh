@@ -83,10 +83,27 @@ else
 fi
 
 echo "==> [REPACK] Compressing final GSI with XZ (high compression)..."
-# Keep the sparse image long enough to create both release formats.  DSU
-# Sideloader accepts XZ, but GZIP is also supported by Android's DSU path and
-# is more compatible with older Samsung gsid implementations.
-gzip -9 -c "$SPARSE_IMG" > "$DSU_IMG"
+# Keep the sparse image for the XZ flashing asset.  DSU consumes a raw,
+# unsparsed filesystem image, so expand only the separate GZIP asset.
+DSU_SOURCE="$SPARSE_IMG"
+DSU_RAW_IMG="$OUTPUT_DIR/.${OUTPUT_NAME}.dsu.raw.img"
+cleanup_dsu_raw() {
+  rm -f -- "$DSU_RAW_IMG"
+}
+trap cleanup_dsu_raw EXIT
+
+IMAGE_MAGIC=$(od -An -tx1 -N4 "$SPARSE_IMG" 2>/dev/null | tr -d '[:space:]')
+if [ "$IMAGE_MAGIC" = "3aff26ed" ]; then
+  if ! command -v simg2img >/dev/null 2>&1; then
+    echo "[-] ERROR: Sparse GSI created, but simg2img is unavailable for the DSU asset." >&2
+    exit 1
+  fi
+  echo "==> [REPACK] Expanding sparse image for the DSU GZIP asset..."
+  simg2img "$SPARSE_IMG" "$DSU_RAW_IMG"
+  DSU_SOURCE="$DSU_RAW_IMG"
+fi
+
+gzip -9 -c "$DSU_SOURCE" > "$DSU_IMG"
 xz -9 -T0 -f "$SPARSE_IMG"
 # After xz without -k, the source .img is replaced by .img.xz.
 COMPRESSED_IMG="${SPARSE_IMG}.xz"
