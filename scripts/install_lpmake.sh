@@ -10,9 +10,9 @@ fi
 
 # Ubuntu's android-sdk-libsparse-utils package contains simg2img, but not
 # lpmake. This is a pinned AOSP prebuilt; verify it before installing it.
-LPMake_URL="${LPMake_URL:-https://android.googlesource.com/kernel/prebuilts/build-tools/+/refs/heads/androidx-draganddrop-release/linux-x86/bin/lpmake?format=TEXT}"
+LPMake_URL="${LPMake_URL:-https://android.googlesource.com/kernel/prebuilts/build-tools/+/39a8ce1951d13b0f31996ae153865729e831d0f9/linux-x86/bin/lpmake?format=TEXT}"
 LPMake_SHA256="276c0c8a046a69e6a2780e08835077119ad7129ddc59cbd12920ecba193d2d31"
-LIB_ARCHIVE_URL="${LIB_ARCHIVE_URL:-https://android.googlesource.com/kernel/prebuilts/build-tools/+archive/refs/heads/androidx-draganddrop-release/linux-x86/lib64.tar.gz}"
+LIB_ARCHIVE_URL="${LIB_ARCHIVE_URL:-https://android.googlesource.com/kernel/prebuilts/build-tools/+archive/39a8ce1951d13b0f31996ae153865729e831d0f9/linux-x86/lib64.tar.gz}"
 TEMP_DIR="$(mktemp -d)"
 TEMP_FILE="$TEMP_DIR/lpmake"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
