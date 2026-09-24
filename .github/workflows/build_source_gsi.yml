@@ -86,6 +86,9 @@ jobs:
       - name: "🔑 Generate Checksums"
         run: |
           # BUG FIX: path must be absolute or relative to GITHUB_WORKSPACE
+          bash scripts/validate_gsi_output.sh \
+            "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.xz \
+            "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.gz
           cd "$GITHUB_WORKSPACE/android_source/out_gsi"
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
           echo "RELEASE_TAG=src-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV

@@ -91,6 +91,7 @@ jobs:
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
           GSI_TYPE_INPUT: ${{ inputs.gsi_type }}
         run: |
+          bash scripts/validate_gsi_output.sh workspace/output/*.img.xz workspace/output/*.img.gz
           cd workspace/output
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
           IMAGE_MODE=$(cat ../image-mode.txt 2>/dev/null || printf '%s' "unknown")

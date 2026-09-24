@@ -81,6 +81,7 @@ jobs:
           INPUT_ROM_TYPE: ${{ inputs.rom_type }}
           INPUT_FS_TYPE: ${{ inputs.fs_type }}
         run: |
+          bash scripts/validate_gsi_output.sh workspace/output/*.img.xz workspace/output/*.img.gz
           cd workspace/output
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
 
