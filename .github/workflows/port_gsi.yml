@@ -61,16 +61,25 @@ jobs:
       - name: "🚀 Execute GSI Porting Engine"
         env:
           SKIP_SETUP_DEPS: "1"
+          INPUT_ROM_URL: ${{ inputs.rom_url }}
+          INPUT_OUTPUT_NAME: ${{ inputs.output_name }}
+          INPUT_ROM_TYPE: ${{ inputs.rom_type }}
+          INPUT_FS_TYPE: ${{ inputs.fs_type }}
         run: |
           chmod +x scripts/*.sh
           bash scripts/port_rom.sh \
-            "${{ inputs.rom_url }}" \
-            "${{ inputs.output_name }}" \
-            "${{ inputs.rom_type }}" \
-            "${{ inputs.fs_type }}"
+            "$INPUT_ROM_URL" \
+            "$INPUT_OUTPUT_NAME" \
+            "$INPUT_ROM_TYPE" \
+            "$INPUT_FS_TYPE"
 
       - name: "🔑 Generate Release Checksums"
         id: checksums
+        env:
+          INPUT_ROM_URL: ${{ inputs.rom_url }}
+          INPUT_OUTPUT_NAME: ${{ inputs.output_name }}
+          INPUT_ROM_TYPE: ${{ inputs.rom_type }}
+          INPUT_FS_TYPE: ${{ inputs.fs_type }}
         run: |
           cd workspace/output
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
@@ -123,7 +132,7 @@ jobs:
             sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
           }
 
-          TELEGRAM_GSI_NAME=$(printf '%s' '${{ inputs.output_name }}' | html_escape)
+          TELEGRAM_GSI_NAME=$(printf '%s' "$INPUT_OUTPUT_NAME" | html_escape)
           TELEGRAM_DEVICE_BRAND=$(printf '%s' "$DEVICE_BRAND" | html_escape)
           TELEGRAM_DEVICE_MANUFACTURER=$(printf '%s' "$DEVICE_MANUFACTURER" | html_escape)
           TELEGRAM_DEVICE_MODEL=$(printf '%s' "$DEVICE_MODEL" | html_escape)
@@ -136,25 +145,25 @@ jobs:
           TELEGRAM_BUILD_TAGS=$(printf '%s' "$BUILD_TAGS" | html_escape)
           TELEGRAM_BUILD_ID=$(printf '%s' "$BUILD_ID" | html_escape)
           TELEGRAM_SECURITY_PATCH=$(printf '%s' "$SECURITY_PATCH" | html_escape)
-          TELEGRAM_OEM_PROFILE=$(printf '%s' '${{ inputs.rom_type }}' | html_escape)
-          TELEGRAM_FILESYSTEM=$(printf '%s' '${{ inputs.fs_type }}' | html_escape)
+          TELEGRAM_OEM_PROFILE=$(printf '%s' "$INPUT_ROM_TYPE" | html_escape)
+          TELEGRAM_FILESYSTEM=$(printf '%s' "$INPUT_FS_TYPE" | html_escape)
           TELEGRAM_IMAGE_MODE=$(printf '%s' "$IMAGE_MODE" | html_escape)
-          TELEGRAM_COMMIT=$(printf '%s' '${{ github.sha }}' | html_escape)
+          TELEGRAM_COMMIT=$(printf '%s' "$GITHUB_SHA" | html_escape)
           RELEASE_TAG="v$(date +%Y.%m.%d-%H%M%S)"
-          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/${RELEASE_TAG}"
 
           cat > build-info.txt <<EOF
           GSI build report
           ================
-          Output name: ${{ inputs.output_name }}
+          Output name: $INPUT_OUTPUT_NAME
           Tool version: $(cat ../../VERSION)
-          Source ROM: ${{ inputs.rom_url }}
-          OEM profile: ${{ inputs.rom_type }}
-          Filesystem: ${{ inputs.fs_type }}
+          Source ROM: $INPUT_ROM_URL
+          OEM profile: $INPUT_ROM_TYPE
+          Filesystem: $INPUT_FS_TYPE
           Image mode: $IMAGE_MODE
           Target architecture: ARM64 A/B Treble GSI
-          Commit: ${{ github.sha }}
-          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Commit: $GITHUB_SHA
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
           Checksums:
@@ -164,13 +173,13 @@ jobs:
           cat > release-notes.md <<EOF
           ## Generic System Image (GSI) Build
 
-          - **Source ROM**: ${{ inputs.rom_url }}
-          - **OEM profile**: ${{ inputs.rom_type }}
-          - **Filesystem**: ${{ inputs.fs_type }}
+          - **Source ROM**: $INPUT_ROM_URL
+          - **OEM profile**: $INPUT_ROM_TYPE
+          - **Filesystem**: $INPUT_FS_TYPE
           - **Image mode**: $IMAGE_MODE
           - **Target architecture**: ARM64 A/B (Project Treble)
-          - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          - **Commit**: ${{ github.sha }}
+          - **Workflow run**: [$GITHUB_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
+          - **Commit**: $GITHUB_SHA
 
           ### Android build properties
 
