@@ -3,7 +3,9 @@
 # build_samsung_super.sh - Safely replace only system in a stock Samsung super
 #
 # This is deliberately opt-in and requires a matching stock super/AP image.
-# It never invents or modifies boot, vendor, odm, vbmeta, recovery, or kernel.
+# It never invents or modifies boot, vendor, odm, recovery, or kernel.  When an
+# AP archive is supplied, it also creates a separate Odin package containing
+# Samsung-format LZ4 super plus the AP's matching vbmeta with AVB disable bits.
 # ============================================================================
 
 set -Eeuo pipefail
@@ -58,6 +60,7 @@ echo "==> [SAMSUNG-SUPER] GSI input: $(basename "$GSI_INPUT")"
 # Accept either a standalone super image or a stock AP tar containing
 # super.img.lz4.  The AP is only used as the source of stock logical partitions.
 STOCK_SOURCE="$STOCK_INPUT"
+AP_VBMETA_SOURCE=""
 STOCK_TYPE=$(file -b "$STOCK_SOURCE" | tr '[:upper:]' '[:lower:]')
 if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
   || printf '%s' "$STOCK_INPUT" | grep -Eiq '\.tar(\.md5)?$'; then
@@ -69,6 +72,7 @@ if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
     echo "[-] ERROR: AP archive does not contain super.img or super.img.lz4." >&2
     exit 1
   fi
+  AP_VBMETA_SOURCE=$(find "$AP_DIR" -type f -name 'vbmeta.img.lz4' -print -quit)
 fi
 
 STOCK_IMAGE="$TEMP_DIR/stock.super.img"
@@ -261,14 +265,27 @@ for group in "${!GROUP_BYTES[@]}"; do
 done
 
 SUPER_OUT="$OUTPUT_DIR/super.img"
-TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}.tar"
-rm -f -- "$SUPER_OUT" "$TAR_OUT"
+SUPER_LZ4_OUT="$OUTPUT_DIR/super.img.lz4"
+RAW_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-super-only.tar"
+ODIN_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-odin.tar"
+rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT"
 
 echo "==> [SAMSUNG-SUPER] Rebuilding stock logical-partition metadata..."
 lpmake "${LPM_ARGS[@]}" --sparse --output "$SUPER_OUT"
 
 if [ ! -s "$SUPER_OUT" ]; then
   echo "[-] ERROR: lpmake produced an empty super image." >&2
+  exit 1
+fi
+
+# Odin does not accept an ordinary LZ4 frame here. Samsung's downloader expects
+# a frame with the content-size field (04 22 4d 18 6c ...), so always produce
+# this companion image even when the caller supplied a standalone super.
+echo "==> [SAMSUNG-SUPER] Creating Samsung-format super.img.lz4..."
+lz4 -f -B6 --content-size "$SUPER_OUT" "$SUPER_LZ4_OUT" >/dev/null
+LZ4_MAGIC=$(od -An -tx1 -N5 "$SUPER_LZ4_OUT" 2>/dev/null | tr -d '[:space:]')
+if [ "$LZ4_MAGIC" != "04224d186c" ]; then
+  echo "[-] ERROR: lz4 did not create a Samsung content-size frame (magic: $LZ4_MAGIC)." >&2
   exit 1
 fi
 
@@ -280,7 +297,43 @@ if [ ! -s "$CHECK_DIR/system.img" ]; then
   exit 1
 fi
 
-tar -cf "$TAR_OUT" -C "$OUTPUT_DIR" "$(basename "$SUPER_OUT")"
+tar -cf "$RAW_TAR_OUT" -C "$OUTPUT_DIR" "$(basename "$SUPER_OUT")"
+
+ODIN_STATUS="Not created: supply the exact matching AP.tar.md5 so vbmeta can be preserved and patched."
+if [ -n "$AP_VBMETA_SOURCE" ] && [ -f "$AP_VBMETA_SOURCE" ]; then
+  VBMETA_IMAGE="$TEMP_DIR/vbmeta.img"
+  VBMETA_LZ4_OUT="$OUTPUT_DIR/vbmeta.img.lz4"
+  echo "==> [SAMSUNG-SUPER] Patching matching AP vbmeta AVB flags..."
+  lz4 -dc -- "$AP_VBMETA_SOURCE" > "$VBMETA_IMAGE"
+  python3 - "$VBMETA_IMAGE" <<'PY'
+import pathlib
+import struct
+import sys
+
+path = pathlib.Path(sys.argv[1])
+data = bytearray(path.read_bytes())
+if len(data) < 124 or data[:4] != b"AVB0":
+    raise SystemExit("matching AP vbmeta is not an AVB vbmeta image")
+old_flags = struct.unpack_from(">I", data, 120)[0]
+new_flags = old_flags | 0x03  # HASHTREE_DISABLED | VERIFICATION_DISABLED
+struct.pack_into(">I", data, 120, new_flags)
+path.write_bytes(data)
+print(f"vbmeta flags: 0x{old_flags:08x} -> 0x{new_flags:08x}")
+PY
+  rm -f -- "$VBMETA_LZ4_OUT"
+  lz4 -f -B6 --content-size "$VBMETA_IMAGE" "$VBMETA_LZ4_OUT" >/dev/null
+  VBMETA_LZ4_MAGIC=$(od -An -tx1 -N5 "$VBMETA_LZ4_OUT" 2>/dev/null | tr -d '[:space:]')
+  if [ "$VBMETA_LZ4_MAGIC" != "04224d186c" ]; then
+    echo "[-] ERROR: lz4 did not create a Samsung vbmeta frame (magic: $VBMETA_LZ4_MAGIC)." >&2
+    exit 1
+  fi
+  tar -H ustar -cf "$ODIN_TAR_OUT" -C "$OUTPUT_DIR" \
+    "$(basename "$SUPER_LZ4_OUT")" "$(basename "$VBMETA_LZ4_OUT")"
+  ODIN_STATUS="Created: $(basename "$ODIN_TAR_OUT") (super.img.lz4 + matching vbmeta.img.lz4)"
+else
+  echo "==> [SAMSUNG-SUPER] No vbmeta.img.lz4 found; Odin tar will not be created."
+fi
+
 cat > "$OUTPUT_DIR/${OUTPUT_NAME}.build-info.txt" <<EOF
 Samsung super GSI package
 =========================
@@ -288,11 +341,17 @@ Device model: $DEVICE_MODEL
 Stock source: $(basename "$STOCK_INPUT")
 GSI source: $(basename "$GSI_INPUT")
 Image mode: stock-super-system-replacement
-Preserved: stock vendor, product, odm, system_ext, boot, recovery, vbmeta, and kernel files
+Preserved: stock vendor, product, odm, system_ext, boot, recovery, and kernel files
 Replaced: system logical partition only
-Warning: Odin flashing still requires the exact matching AP/firmware and device-specific multidisabler/kernel procedure.
+Raw super tar: $(basename "$RAW_TAR_OUT")
+Samsung LZ4 image: $(basename "$SUPER_LZ4_OUT")
+Odin package: $ODIN_STATUS
+AVB: matching AP vbmeta has flags 0x03 only when the Odin package was created
+Warning: use only with the exact matching Samsung model/AP/firmware. Factory reset and device-specific multidisabler/kernel steps may still be required.
 EOF
 
-echo "==> [SAMSUNG-SUPER] Package created: $TAR_OUT"
+echo "==> [SAMSUNG-SUPER] Raw package:    $RAW_TAR_OUT"
+echo "==> [SAMSUNG-SUPER] Odin package:   ${ODIN_TAR_OUT} (if matching AP vbmeta was found)"
 echo "==> [SAMSUNG-SUPER] Super image:    $SUPER_OUT"
+echo "==> [SAMSUNG-SUPER] Samsung image:  $SUPER_LZ4_OUT"
 echo "==> [SAMSUNG-SUPER] Validation passed: system partition present"

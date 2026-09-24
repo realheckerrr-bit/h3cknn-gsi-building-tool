@@ -99,10 +99,20 @@ git push -u origin main
 ### 4. Building a Samsung stock-super package
 
 Use **Build Samsung Super GSI Package** only with the exact stock firmware for
-the phone. Provide a direct URL to the matching `AP.tar.md5`, `super.img.lz4`,
-or `super.img`, the GSI URL, and the exact model. The workflow preserves the
-stock logical partitions and replaces only `system`; it does not provide or
-modify boot, vendor, vbmeta, recovery, or kernel files.
+the phone. Provide a direct URL to the matching `AP.tar.md5`, the GSI URL, and
+the exact model. An AP archive is required for the Odin output: the workflow
+preserves the stock logical partitions, replaces only `system`, converts the
+result to Samsung content-size `super.img.lz4`, and carries the matching
+`vbmeta.img.lz4` with AVB hashtree/verification-disabled flags. It never
+changes boot, vendor, recovery, or kernel files. A standalone `super.img` or
+`super.img.lz4` input is accepted for inspection/raw output, but it cannot
+produce a safe Odin tar without the matching AP vbmeta.
+
+The release contains a `*-odin.tar` only when the AP includes
+`vbmeta.img.lz4`, plus a `*-super-only.tar` for the raw super image. Flash the
+Odin tar only on the exact same model and firmware family. Keep the matching
+BL/CP/CSC package available; a factory reset and the device-specific
+multidisabler/kernel procedure may still be required.
 
 The resulting `.tar` remains device-specific. Follow the matching Samsung
 recovery, multidisabler, data-format, and kernel procedure. A package made

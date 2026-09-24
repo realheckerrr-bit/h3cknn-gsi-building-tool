@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       stock_url:
-        description: "Direct URL to the matching stock AP.tar.md5, super.img.lz4, or super.img"
+        description: "Direct URL to the matching stock AP.tar.md5 (required for Odin output), super.img.lz4, or super.img"
         required: true
         type: string
       gsi_url:
@@ -73,7 +73,8 @@ jobs:
               workspace/samsung-work \
               workspace/output
           cd workspace/output
-          sha256sum *.tar super.img *.build-info.txt > SHA256SUMS.txt
+          find . -maxdepth 1 -type f \( -name '*.tar' -o -name '*.img' -o -name '*.img.lz4' -o -name '*.build-info.txt' \) -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -82,6 +83,8 @@ jobs:
           path: |
             workspace/output/*.tar
             workspace/output/super.img
+            workspace/output/super.img.lz4
+            workspace/output/*.img.lz4
             workspace/output/*.build-info.txt
             workspace/output/SHA256SUMS.txt
           retention-days: 14
@@ -99,13 +102,17 @@ jobs:
             - **Device model**: `${{ inputs.device_model }}`
             - **Stock source**: `${{ inputs.stock_url }}`
             - **GSI source**: `${{ inputs.gsi_url }}`
-            - **Preserved**: stock vendor/product/odm/system_ext and all boot, recovery, vbmeta, and kernel files
+            - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains its matching `vbmeta.img.lz4`.
+            - **Preserved**: stock vendor/product/odm/system_ext and all boot, recovery, and kernel files
 
-            This is not a complete firmware package. Use the exact matching Samsung firmware, recovery,
-            multidisabler, and kernel procedure for the device. Do not use this package on another model.
+            The Odin tar contains Samsung content-size LZ4 `super.img.lz4` plus the matching AP vbmeta
+            with AVB disable flags. Use the exact matching Samsung firmware, recovery, multidisabler,
+            factory-reset, and kernel procedure for the device. Do not use it on another model.
           files: |
             workspace/output/*.tar
             workspace/output/super.img
+            workspace/output/super.img.lz4
+            workspace/output/*.img.lz4
             workspace/output/*.build-info.txt
             workspace/output/SHA256SUMS.txt
         env:

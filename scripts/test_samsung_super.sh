@@ -44,8 +44,10 @@ SAMSUNG_DEVICE_MODEL=SM-TEST \
     "$TEST_DIR/output"
 
 [ -s "$TEST_DIR/output/super.img" ]
-[ -s "$TEST_DIR/output/smoke.tar" ]
-tar -tf "$TEST_DIR/output/smoke.tar" | grep -Fx 'super.img' >/dev/null
+[ -s "$TEST_DIR/output/smoke-super-only.tar" ]
+[ -s "$TEST_DIR/output/super.img.lz4" ]
+tar -tf "$TEST_DIR/output/smoke-super-only.tar" | grep -Fx 'super.img' >/dev/null
+test "$(od -An -tx1 -N5 "$TEST_DIR/output/super.img.lz4" | tr -d '[:space:]')" = 04224d186c
 python3 "$ROOT_DIR/tools/lpunpack.py" \
   --info --format json "$TEST_DIR/output/super.img" \
   | grep -F '"name": "system"' >/dev/null
@@ -61,7 +63,7 @@ SAMSUNG_DEVICE_MODEL=SM-TEST \
     "$TEST_DIR/output-sparse"
 
 [ -s "$TEST_DIR/output-sparse/super.img" ]
-[ -s "$TEST_DIR/output-sparse/smoke-sparse.tar" ]
+[ -s "$TEST_DIR/output-sparse/smoke-sparse-super-only.tar" ]
 
 lz4 -f "$TEST_DIR/stock-super.img" "$TEST_DIR/stock-input"
 mkdir -p "$TEST_DIR/output-lz4"
@@ -74,7 +76,39 @@ SAMSUNG_DEVICE_MODEL=SM-TEST \
     "$TEST_DIR/output-lz4"
 
 [ -s "$TEST_DIR/output-lz4/super.img" ]
-[ -s "$TEST_DIR/output-lz4/smoke-lz4.tar" ]
+[ -s "$TEST_DIR/output-lz4/smoke-lz4-super-only.tar" ]
+[ -s "$TEST_DIR/output-lz4/super.img.lz4" ]
+
+# A real AP must carry matching vbmeta for an Odin package. Exercise the
+# guarded path with a minimal valid AVB header and verify flags 0x03 survive
+# Samsung-format LZ4 compression.
+mkdir -p "$TEST_DIR/ap"
+cp "$TEST_DIR/stock-super.img" "$TEST_DIR/ap/super.img"
+python3 - "$TEST_DIR/ap/vbmeta.img" <<'PY'
+import pathlib
+import sys
+
+data = bytearray(256)
+data[:4] = b"AVB0"
+pathlib.Path(sys.argv[1]).write_bytes(data)
+PY
+lz4 -f -B6 --content-size "$TEST_DIR/ap/super.img" "$TEST_DIR/ap/super.img.lz4" >/dev/null
+lz4 -f -B6 --content-size "$TEST_DIR/ap/vbmeta.img" "$TEST_DIR/ap/vbmeta.img.lz4" >/dev/null
+tar -cf "$TEST_DIR/ap.tar" -C "$TEST_DIR/ap" super.img.lz4 vbmeta.img.lz4
+mkdir -p "$TEST_DIR/output-ap"
+SAMSUNG_DEVICE_MODEL=SM-TEST \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/ap.tar" \
+    "$TEST_DIR/gsi.img" \
+    smoke-ap \
+    "$TEST_DIR/work-ap" \
+    "$TEST_DIR/output-ap"
+[ -s "$TEST_DIR/output-ap/smoke-ap-odin.tar" ]
+tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'super.img.lz4' >/dev/null
+tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta.img.lz4' >/dev/null
+tar -xf "$TEST_DIR/output-ap/smoke-ap-odin.tar" -C "$TEST_DIR/output-ap"
+lz4 -dc "$TEST_DIR/output-ap/vbmeta.img.lz4" > "$TEST_DIR/output-ap/vbmeta.img"
+test "$(od -An -tu4 -j120 -N4 "$TEST_DIR/output-ap/vbmeta.img" | tr -d '[:space:]')" = 3
 
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \
