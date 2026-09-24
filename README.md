@@ -110,6 +110,20 @@ t.me/h3cknnGSI
 
 ## ⚡ How to Flash the Resulting GSI
 
+### Samsung Galaxy M12 / Samsung devices
+
+Samsung phones do not use the normal fastboot flashing commands. For DSU
+Sideloader, keep the `.img.gz` asset compressed and select it from a working
+Android installation. If the phone has no working Android installation, first
+restore stock firmware with Odin; Odin cannot flash a raw GSI `.img` file.
+
+With TWRP, extract the `.img.xz` file on the PC, choose **Install → Install
+Image**, select the extracted `.img`, choose **System Image**, and wipe data
+before the first boot. The exact recovery and vendor firmware must match the
+phone model.
+
+### Fastboot-based devices
+
 1. Extract the downloaded image:
    ```bash
    unxz <image_name>.img.xz

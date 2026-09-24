@@ -56,13 +56,16 @@ jobs:
       - name: "🚀 Build GSI"
         env:
           SKIP_SETUP_DEPS: "1"
+          ROM_URL_INPUT: ${{ inputs.rom_url }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          GSI_TYPE_INPUT: ${{ inputs.gsi_type }}
         run: |
           # Parse fs_type from the friendly label
-          FS_RAW="${{ github.event.inputs.gsi_type }}"
+          FS_RAW="$GSI_TYPE_INPUT"
           FS_TYPE="${FS_RAW%%\ *}"   # takes "ext4" from "ext4 (most compatible)"
 
           # Auto-detect OEM profile from URL
-          ROM_URL="${{ github.event.inputs.rom_url }}"
+          ROM_URL="$ROM_URL_INPUT"
           ROM_TYPE="generic"
           echo "$ROM_URL" | grep -qi "pixel\|google"      && ROM_TYPE="pixel"
           echo "$ROM_URL" | grep -qi "hyperos\|miui\|xiaomi" && ROM_TYPE="hyperos"
@@ -74,14 +77,34 @@ jobs:
           chmod +x scripts/*.sh
           bash scripts/port_rom.sh \
             "$ROM_URL" \
-            "${{ github.event.inputs.output_name }}" \
+            "$OUTPUT_NAME_INPUT" \
             "$ROM_TYPE" \
             "$FS_TYPE"
 
       - name: "🔑 Checksum"
+        env:
+          ROM_URL_INPUT: ${{ inputs.rom_url }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          GSI_TYPE_INPUT: ${{ inputs.gsi_type }}
         run: |
           cd workspace/output
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
+          IMAGE_MODE=$(cat ../image-mode.txt 2>/dev/null || printf '%s' "unknown")
+          IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
+          RAW_IMAGE_BYTES=$(xz --robot --list "$IMAGE_XZ" | awk -F '\t' '$1 == "totals" { print $5 }')
+          FS_RAW="$GSI_TYPE_INPUT"
+          FS_TYPE="${FS_RAW%%\ *}"
+          cat > build-info.txt <<EOF
+          GSI build report
+          ================
+          Output name: $OUTPUT_NAME_INPUT
+          Source ROM: $ROM_URL_INPUT
+          Image mode: $IMAGE_MODE
+          Requested filesystem: ${FS_TYPE}
+          Target architecture: ARM64 A/B Treble GSI
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Raw image size: ${RAW_IMAGE_BYTES} bytes
+          EOF
           echo "RELEASE_TAG=easy-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
       - name: "📊 Build Summary"
@@ -101,6 +124,7 @@ jobs:
             workspace/output/*.img.xz
             workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
+            workspace/output/build-info.txt
           retention-days: 14
 
       - name: "🏷️ Publish Release"
@@ -115,6 +139,7 @@ jobs:
             |---|---|
             | Source ROM | `${{ github.event.inputs.rom_url }}` |
             | Format | `${{ github.event.inputs.gsi_type }}` |
+            | Image mode | See `build-info.txt` |
             | Architecture | ARM64 A/B (Treble) |
             | Runner | Ubuntu Latest |
 
@@ -136,5 +161,6 @@ jobs:
             workspace/output/*.img.xz
             workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
+            workspace/output/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
