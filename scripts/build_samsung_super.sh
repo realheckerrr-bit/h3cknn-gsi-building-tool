@@ -243,7 +243,7 @@ LPM_ARGS=(
   --metadata-size "$METADATA_SIZE"
   --super-name super
   --metadata-slots "$METADATA_SLOTS"
-  --device "${DEVICE_NAME}:${DEVICE_SIZE}"
+  --device-size "$DEVICE_SIZE"
   --alignment "$ALIGNMENT"
   --alignment-offset "$ALIGNMENT_OFFSET"
   --block-size "$BLOCK_SIZE"
