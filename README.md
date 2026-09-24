@@ -18,11 +18,12 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
   - `erofs` & `ext4` filesystem extraction.
 - **Treble Compatibility Layer:**
   - Injects universal `ro.treble.enabled` properties and generic Dalvik heaps.
-  - Disables AVB, dm-verity, and encryption enforcement loops.
+  - Does not claim to disable AVB, dm-verity, or Samsung encryption: those are controlled by device vbmeta, vendor, boot, and recovery components.
   - Disables OEM-specific proprietary daemons that crash without stock vendor HALs (`knox`, `vaultkeeper`, `miui_daemon`, `faceunlock`).
   - Injects **Treble hardware overlays** (`treble-overlay.apk`) for adaptive brightness, cutouts, and status bar padding.
   - Injects **TrebleApp** (`packages/apps/TrebleApp`) for hardware toggles (VoLTE, fingerprint scanner, high refresh rates).
   - Detects direct community GSI inputs and preserves their original sparse/filesystem layout instead of unpacking and rebuilding them. Set `FORCE_REPACK_GSI=1` only when deliberately converting an OEM system image.
+  - The OEM repack path is experimental; it cannot create a complete bootable Samsung ROM without the matching device vendor, boot image/kernel, vbmeta, and recovery setup.
 - **Automated GitHub Actions CI/CD:**
   - One-click build via `workflow_dispatch`.
   - Automatic runner disk cleanup (+35GB free space optimization).

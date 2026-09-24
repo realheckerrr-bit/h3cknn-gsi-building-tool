@@ -93,8 +93,6 @@ fi
 # 2. Patch essential Treble flags
 set_prop "ro.treble.enabled" "true"
 set_prop "ro.apex.updatable" "false"
-set_prop "ro.adb.secure" "0"
-set_prop "ro.secure" "0"
 set_prop "ro.debuggable" "1"
 
 # 2b. Stamp h3cknnGSI_tool branding into the Android build number
@@ -213,16 +211,24 @@ else
   echo "  [!] TrebleApp URL not configured; skipping optional app"
 fi
 
-# 6. Adjust fstab entries
-# Keep an empty fstab search from tripping errexit/ERR when the extracted
-# system image has no fstab files.
-while IFS= read -r FSTAB; do
-  [ -z "$FSTAB" ] && continue
-  echo "==> [TREBLE-PATCH] Patching fstab: $FSTAB"
-  "${SUDO[@]}" sed -i 's/fileencryption=[^,]*//g' "$FSTAB" || true
-  "${SUDO[@]}" sed -i 's/forceencrypt=[^,]*//g' "$FSTAB" || true
-  "${SUDO[@]}" sed -i 's/,verify//g' "$FSTAB" || true
-  "${SUDO[@]}" sed -i 's/,avb[^,]*//g' "$FSTAB" || true
-done < <(find "$SYSTEM_ROOT" -name "*fstab*" -type f -print 2>/dev/null || true)
+# 6. Adjust fstab entries only when explicitly requested.
+#
+# The system image does not own Samsung's vendor fstab, AVB chain, or
+# encryption policy.  Editing every fstab found under /system can also remove
+# required mount flags and create a bootloop.  Keep the safe default intact;
+# callers who knowingly have a test image may opt in for debugging.
+if [ "${DISABLE_FSTAB_ENCRYPTION:-0}" = "1" ]; then
+  echo "==> [TREBLE-PATCH] Explicit fstab encryption override enabled"
+  while IFS= read -r FSTAB; do
+    [ -z "$FSTAB" ] && continue
+    echo "==> [TREBLE-PATCH] Patching fstab: $FSTAB"
+    "${SUDO[@]}" sed -i 's/fileencryption=[^,]*//g' "$FSTAB"
+    "${SUDO[@]}" sed -i 's/forceencrypt=[^,]*//g' "$FSTAB"
+    "${SUDO[@]}" sed -i 's/,verify//g' "$FSTAB"
+    "${SUDO[@]}" sed -i 's/,avb[^,]*//g' "$FSTAB"
+  done < <(find "$SYSTEM_ROOT" -name "*fstab*" -type f -print 2>/dev/null || true)
+else
+  echo "  [!] Leaving fstab, AVB, and encryption flags unchanged"
+fi
 
 echo "==> [TREBLE-PATCH] Project Treble modifications applied successfully!"
