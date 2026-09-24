@@ -343,7 +343,7 @@ if [ "${#AP_VBMETA_SOURCES[@]}" -gt 0 ]; then
   echo "==> [SAMSUNG-SUPER] Patching matching AP vbmeta AVB flags..."
   for AP_VBMETA_SOURCE in "${AP_VBMETA_SOURCES[@]}"; do
     VBMETA_NAME=$(basename "$AP_VBMETA_SOURCE")
-    VBMETA_IMAGE="$TEMP_DIR/$VBMETA_NAME"
+    VBMETA_IMAGE="$TEMP_DIR/${VBMETA_NAME%.lz4}"
     VBMETA_LZ4_OUT="$OUTPUT_DIR/$VBMETA_NAME"
     lz4 -dc -- "$AP_VBMETA_SOURCE" > "$VBMETA_IMAGE"
     python3 - "$VBMETA_IMAGE" <<'PY'
