@@ -78,6 +78,7 @@ jobs:
           IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
           RAW_IMAGE_BYTES=$(xz --robot --list "$IMAGE_XZ" | awk -F '\t' '$1 == "totals" { print $5 }')
           RAW_IMAGE_SIZE=$(numfmt --to=iec-i --suffix=B "$RAW_IMAGE_BYTES")
+          IMAGE_MODE=$(cat ../image-mode.txt 2>/dev/null || printf '%s' "unknown")
 
           BUILD_PROP=""
           for candidate in \
@@ -137,6 +138,7 @@ jobs:
           TELEGRAM_SECURITY_PATCH=$(printf '%s' "$SECURITY_PATCH" | html_escape)
           TELEGRAM_OEM_PROFILE=$(printf '%s' '${{ inputs.rom_type }}' | html_escape)
           TELEGRAM_FILESYSTEM=$(printf '%s' '${{ inputs.fs_type }}' | html_escape)
+          TELEGRAM_IMAGE_MODE=$(printf '%s' "$IMAGE_MODE" | html_escape)
           TELEGRAM_COMMIT=$(printf '%s' '${{ github.sha }}' | html_escape)
           RELEASE_TAG="v$(date +%Y.%m.%d-%H%M%S)"
           RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
@@ -149,6 +151,7 @@ jobs:
           Source ROM: ${{ inputs.rom_url }}
           OEM profile: ${{ inputs.rom_type }}
           Filesystem: ${{ inputs.fs_type }}
+          Image mode: $IMAGE_MODE
           Target architecture: ARM64 A/B Treble GSI
           Commit: ${{ github.sha }}
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -164,6 +167,7 @@ jobs:
           - **Source ROM**: ${{ inputs.rom_url }}
           - **OEM profile**: ${{ inputs.rom_type }}
           - **Filesystem**: ${{ inputs.fs_type }}
+          - **Image mode**: $IMAGE_MODE
           - **Target architecture**: ARM64 A/B (Project Treble)
           - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - **Commit**: ${{ github.sha }}
@@ -206,6 +210,7 @@ jobs:
           Raw image size: ${RAW_IMAGE_SIZE} (${RAW_IMAGE_BYTES} bytes)
           OEM profile: ${TELEGRAM_OEM_PROFILE}
           Filesystem: ${TELEGRAM_FILESYSTEM}
+          Image mode: ${TELEGRAM_IMAGE_MODE}
           Commit: ${TELEGRAM_COMMIT}
           </blockquote>
           EOF

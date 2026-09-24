@@ -82,13 +82,16 @@ for candidate in \
 done
 
 IS_EXISTING_GSI=0
-if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ] && [ -f "$BUILD_PROP" ]; then
+if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ]; then
   SOURCE_BASENAME=$(basename "$SOURCE_INPUT" | tr '[:upper:]' '[:lower:]')
   # Some community GSIs do not carry ro.treble.enabled in the extracted
   # build.prop even though their filename/variant is unambiguous.  Require a
   # direct image input plus either a generic device marker or a recognized GSI
-  # variant marker; do not rely on one property alone.
-  if grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP" \
+  # variant marker; do not rely on one property alone.  The filename/URL test
+  # remains independent of BUILD_PROP: metadata permissions or an unusual
+  # system-as-root layout must never force a known GSI through the destructive
+  # OEM unpack/repack path.
+  if { [ -f "$BUILD_PROP" ] && grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP"; } \
     || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" | grep -Eiq '(^|[-_/?.])(gsi|treble|arm64_[ab][a-z][a-z]?n)([-_.?/]|$)'; then
     IS_EXISTING_GSI=1
   fi
@@ -97,6 +100,7 @@ fi
 if [ "$IS_EXISTING_GSI" = "1" ]; then
   echo "==> [PORT] Existing Treble GSI detected; preserving source image layout."
   bash "$SCRIPT_DIR/preserve_gsi.sh" "$SOURCE_INPUT" "$OUTPUT_NAME" "$WORK_DIR"
+  printf '%s\n' "preserved-existing-gsi" > "$WORK_DIR/image-mode.txt"
   echo "==> GSI Build pipeline completed successfully (passthrough mode)."
   exit 0
 fi
@@ -106,5 +110,6 @@ bash "$SCRIPT_DIR/patch_treble.sh" "$SYSTEM_ROOT" "$ROM_TYPE"
 
 # 5. Repack into GSI
 bash "$SCRIPT_DIR/repack_gsi.sh" "$SYSTEM_ROOT" "$OUTPUT_NAME" "$FS_TYPE"
+printf '%s\n' "rebuilt-$FS_TYPE" > "$WORK_DIR/image-mode.txt"
 
 echo "==> GSI Build pipeline completed successfully."
