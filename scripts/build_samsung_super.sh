@@ -118,16 +118,23 @@ fi
 
 PARTITION_DIR="$TEMP_DIR/partitions"
 mkdir -p "$PARTITION_DIR"
-python3 "$TOOLS_DIR/lpunpack.py" "$STOCK_IMAGE" "$PARTITION_DIR" >/dev/null
+if ! python3 "$TOOLS_DIR/lpunpack.py" "$STOCK_IMAGE" "$PARTITION_DIR" >/dev/null; then
+  echo "[-] ERROR: Could not unpack logical partitions from stock super." >&2
+  exit 1
+fi
 
 META_JSON="$TEMP_DIR/metadata.json"
-python3 "$TOOLS_DIR/lpunpack.py" --info --format json "$STOCK_IMAGE" > "$META_JSON"
+if ! python3 "$TOOLS_DIR/lpunpack.py" --info --format json "$STOCK_IMAGE" > "$META_JSON"; then
+  echo "[-] ERROR: Could not read usable logical-partition metadata from stock super:" >&2
+  cat "$META_JSON" >&2
+  exit 1
+fi
 
 # Convert the metadata to a small, shell-safe TSV description.  Group limits
 # and partition names come from the user's stock image, never from assumptions
 # about a particular M12 regional firmware.
 META_TSV="$TEMP_DIR/metadata.tsv"
-python3 - "$META_JSON" > "$META_TSV" <<'PY'
+if ! python3 - "$META_JSON" > "$META_TSV" <<'PY'
 import json
 import sys
 
@@ -145,6 +152,11 @@ for group in data.get("group_table", []):
 for partition in data.get("partition_table", []):
     print("PART\t{}\t{}".format(partition["name"], partition["group_name"]))
 PY
+then
+  echo "[-] ERROR: Stock super metadata was not valid JSON:" >&2
+  cat "$META_JSON" >&2
+  exit 1
+fi
 
 declare -A GROUP_MAX GROUP_BYTES GROUP_PARTITION_SEEN
 DEVICE_NAME=""
