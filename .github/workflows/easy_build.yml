@@ -111,7 +111,8 @@ jobs:
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           Raw image size: ${RAW_IMAGE_BYTES} bytes
           EOF
-          echo "RELEASE_TAG=easy-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
+          # Run IDs are unique even when two manual builds start in the same second.
+          echo "RELEASE_TAG=easy-${GITHUB_RUN_ID}" >> $GITHUB_ENV
 
       - name: "📊 Build Summary"
         run: |
@@ -190,7 +191,15 @@ jobs:
             sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
           }
           TELEGRAM_GSI_NAME=$(printf '%s' "$OUTPUT_NAME_INPUT" | html_escape)
-          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable>Build info is attached to the release.</blockquote>' "$TELEGRAM_GSI_NAME" "$RELEASE_URL")
+          TELEGRAM_IMAGE_MODE=$(grep -m1 '^Image mode:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
+          TELEGRAM_FILESYSTEM=$(grep -m1 '^Requested filesystem:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
+          TELEGRAM_RAW_SIZE=$(grep -m1 '^Raw image size:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
+          TELEGRAM_SOURCE=$(grep -m1 '^Source ROM:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
+          TELEGRAM_COMMIT=$(printf '%s' "$GITHUB_SHA" | html_escape)
+          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nImage mode: %s\nFilesystem: %s\nRaw image size: %s\nSource ROM: %s\nCommit: %s\nRun: %s</blockquote>' \
+            "$TELEGRAM_GSI_NAME" "$RELEASE_URL" "$TELEGRAM_IMAGE_MODE" \
+            "$TELEGRAM_FILESYSTEM" "$TELEGRAM_RAW_SIZE" "$TELEGRAM_SOURCE" \
+            "$TELEGRAM_COMMIT" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
