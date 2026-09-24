@@ -7,10 +7,14 @@
 set -eo pipefail
 
 SYSTEM_ROOT="${1:-}"
-OUTPUT_NAME="${2:-system-treble-arm64}"
+REQUESTED_OUTPUT_NAME="${2:-system-treble-arm64}"
 FS_TYPE="${3:-ext4}"
 WORK_DIR="$(pwd)/workspace"
 OUTPUT_DIR="$WORK_DIR/output"
+
+OUTPUT_NAME=$(printf '%s' "$REQUESTED_OUTPUT_NAME" \
+  | sed -E 's/[^A-Za-z0-9._-]+/_/g; s/^[.-]+//; s/[.-]+$//')
+[ -n "$OUTPUT_NAME" ] || OUTPUT_NAME="system-treble-arm64"
 
 mkdir -p "$OUTPUT_DIR"
 

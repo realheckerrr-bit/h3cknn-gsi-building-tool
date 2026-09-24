@@ -73,6 +73,12 @@ FILE_MAGIC=$(od -An -tx1 -N4 "$ROM_FILE" 2>/dev/null | tr -d '[:space:]' || true
 # a raw payload.bin merely because `file` reports generic Android/data content.
 if [ "$FILE_MAGIC" = "504b0304" ] || echo "$FILE_TYPE" | grep -q "zip archive"; then
   7z x -y "$ROM_FILE" -o"$EXTRACT_DIR"
+elif echo "$FILE_TYPE" | grep -q "xz compressed" || [ "$FILE_EXT" = "xz" ]; then
+  # Accept a direct compressed GSI image as an input source.  This is useful
+  # for rebuilding a known-good community GSI with our metadata/DSU outputs.
+  xz -dc "$ROM_FILE" > "$EXTRACT_DIR/system.img"
+elif echo "$FILE_TYPE" | grep -q "gzip compressed" || [ "$FILE_EXT" = "gz" ]; then
+  gzip -dc "$ROM_FILE" > "$EXTRACT_DIR/system.img"
 elif echo "$FILE_TYPE" | grep -q "gzip\|tar"; then
   tar -xf "$ROM_FILE" -C "$EXTRACT_DIR"
 elif echo "$FILE_TYPE" | grep -q "7-zip\|7z"; then

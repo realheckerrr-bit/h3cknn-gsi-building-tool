@@ -9,10 +9,17 @@ SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 VERSION_FILE="$SCRIPT_DIR/../VERSION"
 TOOL_VERSION="$(cat "$VERSION_FILE" 2>/dev/null || echo "0.0.1")"
 ROM_URL="${1:-}"
-OUTPUT_NAME="${2:-GSI_Treble_ARM64}"
+REQUESTED_OUTPUT_NAME="${2:-GSI_Treble_ARM64}"
 ROM_TYPE="${3:-generic}"
 FS_TYPE="${4:-ext4}"
 WORK_DIR="$(pwd)/workspace"
+
+# Workflow names are also used as filesystem names.  Keep the display name in
+# GitHub metadata, but never allow slashes, traversal, or shell-hostile
+# punctuation to create a path outside workspace/output.
+OUTPUT_NAME=$(printf '%s' "$REQUESTED_OUTPUT_NAME" \
+  | sed -E 's/[^A-Za-z0-9._-]+/_/g; s/^[.-]+//; s/[.-]+$//')
+[ -n "$OUTPUT_NAME" ] || OUTPUT_NAME="GSI_Treble_ARM64"
 
 if [ -z "$ROM_URL" ]; then
   echo "=========================================================="
@@ -34,6 +41,9 @@ echo "Starting Project Treble GSI Porting Pipeline"
 echo " Tool Version: $TOOL_VERSION"
 echo " ROM URL:     $ROM_URL"
 echo " Output Name: $OUTPUT_NAME"
+if [ "$REQUESTED_OUTPUT_NAME" != "$OUTPUT_NAME" ]; then
+  echo " Requested Name: $REQUESTED_OUTPUT_NAME"
+fi
 echo " Profile:     $ROM_TYPE"
 echo " Filesystem:  $FS_TYPE"
 echo "=========================================================="

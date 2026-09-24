@@ -167,7 +167,6 @@ done
 echo "==> [TREBLE-PATCH] Removing vendor-locked bloatware..."
 REMOVE_TARGETS=(
   "system/priv-app/Velvet"
-  "system/priv-app/SetupWizard"
   "system/priv-app/GoogleFeedback"
   "system/app/Stk"
   "system/priv-app/SamsungPass"
