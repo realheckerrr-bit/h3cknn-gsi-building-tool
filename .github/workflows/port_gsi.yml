@@ -161,12 +161,12 @@ jobs:
           cat > release-notes.md <<EOF
           ## Generic System Image (GSI) Build
 
-          - **Source ROM**: `${{ inputs.rom_url }}`
-          - **OEM profile**: `${{ inputs.rom_type }}`
-          - **Filesystem**: `${{ inputs.fs_type }}`
+          - **Source ROM**: ${{ inputs.rom_url }}
+          - **OEM profile**: ${{ inputs.rom_type }}
+          - **Filesystem**: ${{ inputs.fs_type }}
           - **Target architecture**: ARM64 A/B (Project Treble)
           - **Workflow run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          - **Commit**: `${{ github.sha }}`
+          - **Commit**: ${{ github.sha }}
 
           ### Android build properties
 
@@ -176,7 +176,7 @@ jobs:
           - **Device codename**: $(prop ro.product.system.device ro.product.device)
           - **Device board**: $(prop ro.product.board ro.board.platform)
           - **Android version**: $(prop ro.build.version.release) (SDK $(prop ro.build.version.sdk))
-          - **Build fingerprint**: `$(prop ro.build.fingerprint ro.system.build.fingerprint)`
+          - **Build fingerprint**: $(prop ro.build.fingerprint ro.system.build.fingerprint)
           - **Build type**: $(prop ro.build.type) / $(prop ro.build.tags)
           - **Build ID**: $(prop ro.build.id)
           - **Security patch**: $(prop ro.build.version.security_patch)
