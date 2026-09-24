@@ -51,7 +51,6 @@ gsi-builder-tool/
 ├── source/
 │   ├── manifests/
 │   │   └── treble_manifest.xml    # Treble manifest (phh/trebledroid)
-│   ├── apply_patches.sh           # Patch manager for frameworks/base, etc.
 │   ├── build_source.sh            # mka systemimage runner
 │   └── sync_and_patch.sh          # Shallow repo sync and patch application
 ├── tools/
@@ -118,10 +117,20 @@ Sideloader, keep the `.img.gz` asset compressed and select it from a working
 Android installation. If the phone has no working Android installation, first
 restore stock firmware with Odin; Odin cannot flash a raw GSI `.img` file.
 
-With TWRP, extract the `.img.xz` file on the PC, choose **Install → Install
-Image**, select the extracted `.img`, choose **System Image**, and wipe data
-before the first boot. The exact recovery and vendor firmware must match the
-phone model.
+For a normal fastboot-style device, extracting `.img.xz` and flashing the
+system image is enough. Samsung Exynos 850 phones are different: on many M12
+/ A12 variants, a raw system image alone is not a complete Odin package. Use
+the exact-model installation procedure with the matching stock AP/vendor,
+patched vbmeta or multidisabler, recovery, and kernel. The community Exynos
+850 guide documents the required sequence: format data, run `multidisabler`
+twice, convert data to the expected filesystem, and flash the matching
+Physwizz kernel when using Android 14 or newer.
+
+If your exact TWRP supports direct system-image flashing, extract the
+`.img.xz`, choose **Install → Install Image → System Image**, then follow the
+device-specific data/multidisabler/kernel steps before the first boot. Do not
+flash a raw GSI `.img` directly through Odin; Odin needs the appropriate
+Samsung package/container.
 
 For Galaxy M12/A12-family devices, the GSI is only the system partition. A
 bootloop can still come from the Samsung vendor, AVB/multidisabler state, the
@@ -133,7 +142,9 @@ On Exynos 850 M12/A12 devices, Android 14+ GSI installations commonly also
 need a compatible device kernel (often the Physwizz kernel variant for the
 loader/firmware binary) in addition to the system image. The builder cannot
 embed that kernel safely because `SM-M127F`, `SM-M127G`, and regional firmware
-binary versions are not interchangeable. See the
+binary versions are not interchangeable. Also avoid changing PHH Treble
+settings during the first boot; some Exynos 850 builds reboot or bootloop
+after those settings are changed. See the
 [Exynos 850 GSI notes](https://github-wiki-see.page/m/phhusson/treble_experimentations/wiki/Samsung-Galaxy-A12s-%28Exynos-850%29)
 and use the kernel/TWRP package matching the exact model and bootloader.
 

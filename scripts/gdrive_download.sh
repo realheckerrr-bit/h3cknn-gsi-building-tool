@@ -43,15 +43,16 @@ extract_gdrive_id() {
   local url="$1"
   local file_id=""
 
-  # Format: /file/d/FILE_ID/
-  if echo "$url" | grep -qP '/file/d/([a-zA-Z0-9_-]+)'; then
-    file_id=$(echo "$url" | grep -oP '/file/d/\K[a-zA-Z0-9_-]+')
+  # Use Bash regex captures instead of grep/head pipelines.  With pipefail,
+  # those pipelines can turn a successful match into a SIGPIPE failure.
+  if [[ "$url" =~ /file/d/([a-zA-Z0-9_-]+) ]]; then
+    file_id="${BASH_REMATCH[1]}"
   # Format: ?id=FILE_ID or &id=FILE_ID
-  elif echo "$url" | grep -qP '[?&]id=([a-zA-Z0-9_-]+)'; then
-    file_id=$(echo "$url" | grep -oP '[?&]id=\K[a-zA-Z0-9_-]+')
+  elif [[ "$url" =~ [\?\&]id=([a-zA-Z0-9_-]+) ]]; then
+    file_id="${BASH_REMATCH[1]}"
   # Format: /folders/FOLDER_ID
-  elif echo "$url" | grep -qP '/folders/([a-zA-Z0-9_-]+)'; then
-    file_id=$(echo "$url" | grep -oP '/folders/\K[a-zA-Z0-9_-]+')
+  elif [[ "$url" =~ /folders/([a-zA-Z0-9_-]+) ]]; then
+    file_id="${BASH_REMATCH[1]}"
     log "[!] WARNING: Folder URL detected. Will download first file in folder."
   fi
 
@@ -115,8 +116,8 @@ CONFIRM_PAGE="/tmp/gdrive_confirm_${FILE_ID}.html"
 # now serves this form from drive.usercontent.google.com and puts confirm/uuid
 # in hidden inputs rather than query parameters.
 curl -sc /tmp/gdrive_cookies.txt -fsSL "$CONFIRM_URL" -o "$CONFIRM_PAGE" || true
-CONFIRM_TOKEN=$(grep -oP 'name="confirm" value="\K[^"]+' "$CONFIRM_PAGE" | head -n1 || true)
-CONFIRM_UUID=$(grep -oP 'name="uuid" value="\K[^"]+' "$CONFIRM_PAGE" | head -n1 || true)
+CONFIRM_TOKEN=$(grep -m1 -oP 'name="confirm" value="\K[^"]+' "$CONFIRM_PAGE" || true)
+CONFIRM_UUID=$(grep -m1 -oP 'name="uuid" value="\K[^"]+' "$CONFIRM_PAGE" || true)
 
 if [ -n "$CONFIRM_TOKEN" ]; then
   log "  -> Large file detected; using confirmation token."

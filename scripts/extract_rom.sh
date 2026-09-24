@@ -28,7 +28,7 @@ cd "$DOWNLOAD_DIR"
 # ── Google Drive URL detection ───────────────────────────────────────────────
 # Supports all GDrive sharing link formats including /file/d/, /open?id=, /uc?id=
 is_gdrive_url() {
-  echo "$1" | grep -qiP '(drive\.google\.com|docs\.google\.com/.*drive)'
+  [[ "$1" == *drive.google.com* || "$1" == *docs.google.com/*drive* ]]
 }
 
 if is_gdrive_url "$ROM_URL"; then
