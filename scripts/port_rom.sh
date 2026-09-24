@@ -92,7 +92,7 @@ if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ]; then
   # system-as-root layout must never force a known GSI through the destructive
   # OEM unpack/repack path.
   if { [ -f "$BUILD_PROP" ] && grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP"; } \
-    || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" | grep -Eiq '(^|[-_/?.])(gsi|treble|arm64_[ab][a-z][a-z]?n)([-_.?/]|$)'; then
+    || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" | grep -Eiq '(^|[-_/?.])(gsi|treble|(arm64|a64)_[ab][a-z][a-z]?n)([-_.?/]|$)'; then
     IS_EXISTING_GSI=1
   fi
 fi
