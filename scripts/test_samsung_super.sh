@@ -108,7 +108,14 @@ tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'super.img.lz4' >/dev
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta.img.lz4' >/dev/null
 tar -xf "$TEST_DIR/output-ap/smoke-ap-odin.tar" -C "$TEST_DIR/output-ap"
 lz4 -dc "$TEST_DIR/output-ap/vbmeta.img.lz4" > "$TEST_DIR/output-ap/vbmeta.img"
-test "$(od -An -tu4 -j120 -N4 "$TEST_DIR/output-ap/vbmeta.img" | tr -d '[:space:]')" = 3
+python3 - "$TEST_DIR/output-ap/vbmeta.img" <<'PY'
+import pathlib
+import struct
+import sys
+
+data = pathlib.Path(sys.argv[1]).read_bytes()
+assert struct.unpack_from(">I", data, 120)[0] == 3
+PY
 
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \
