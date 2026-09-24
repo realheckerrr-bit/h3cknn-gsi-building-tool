@@ -1,0 +1,22 @@
+name: "🧪 Builder smoke tests"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "📦 Checkout"
+        uses: actions/checkout@v4
+
+      - name: "🔎 Bash syntax"
+        run: bash -n scripts/*.sh source/*.sh
+
+      - name: "🧭 Direct GSI detection"
+        run: bash scripts/test_gsi_detection.sh
