@@ -105,6 +105,7 @@ jobs:
           Output name: $OUTPUT_NAME_INPUT
           Source ROM: $ROM_URL_INPUT
           Image mode: $IMAGE_MODE
+          DSU signing: Community GSI; not signed with a Samsung/Google OEM key
           Requested filesystem: ${FS_TYPE}
           Target architecture: ARM64 A/B Treble GSI
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
@@ -145,6 +146,7 @@ jobs:
             | Source ROM | `${{ github.event.inputs.rom_url }}` |
             | Format | `${{ github.event.inputs.gsi_type }}` |
             | Image mode | See `build-info.txt` |
+            | DSU signing | Community GSI; installer/device must accept it |
             | Architecture | ARM64 A/B (Treble) |
             | Runner | Ubuntu Latest |
 

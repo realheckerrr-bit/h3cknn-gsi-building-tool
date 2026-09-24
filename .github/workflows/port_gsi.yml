@@ -162,6 +162,7 @@ jobs:
           OEM profile: $INPUT_ROM_TYPE
           Filesystem: $INPUT_FS_TYPE
           Image mode: $IMAGE_MODE
+          DSU signing: Community GSI; not signed with a Samsung/Google OEM key
           Target architecture: ARM64 A/B Treble GSI
           Commit: $GITHUB_SHA
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
@@ -178,6 +179,7 @@ jobs:
           - **OEM profile**: $INPUT_ROM_TYPE
           - **Filesystem**: $INPUT_FS_TYPE
           - **Image mode**: $IMAGE_MODE
+          - **DSU signing**: Community GSI; not signed with a Samsung/Google OEM key
           - **Target architecture**: ARM64 A/B (Project Treble)
           - **Workflow run**: [$GITHUB_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
           - **Commit**: $GITHUB_SHA
@@ -221,6 +223,7 @@ jobs:
           OEM profile: ${TELEGRAM_OEM_PROFILE}
           Filesystem: ${TELEGRAM_FILESYSTEM}
           Image mode: ${TELEGRAM_IMAGE_MODE}
+          DSU signing: Community GSI; installer/device must accept community GSI signatures
           Commit: ${TELEGRAM_COMMIT}
           </blockquote>
           EOF

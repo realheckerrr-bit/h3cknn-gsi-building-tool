@@ -116,6 +116,7 @@ jobs:
             - **Variant**: `${{ github.event.inputs.variant }}`
             - **Build Type**: `${{ github.event.inputs.build_type }}`
             - **Treble Layer**: TrebleDroid `${{ github.event.inputs.treble_branch }}`
+            - **DSU signing**: Community GSI; not signed with a Samsung/Google OEM key
             - **Built on**: Run ${{ github.run_id }}
 
             ### ⚡ Flashing Instructions:
