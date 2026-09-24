@@ -7,7 +7,7 @@ ROOT_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
 TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/samsung-super-test.XXXXXX")
 trap 'rm -rf -- "$TEST_DIR"' EXIT
 
-for command_name in lpmake mke2fs simg2img 7z; do
+for command_name in lpmake mke2fs simg2img img2simg 7z; do
   command -v "$command_name" >/dev/null 2>&1 || {
     echo "[-] Missing test dependency: $command_name" >&2
     exit 1
@@ -49,5 +49,18 @@ tar -tf "$TEST_DIR/output/smoke.tar" | grep -Fx 'super.img' >/dev/null
 python3 "$ROOT_DIR/tools/lpunpack.py" \
   --info --format json "$TEST_DIR/output/super.img" \
   | grep -F '"name": "system"' >/dev/null
+
+img2simg "$TEST_DIR/stock-super.img" "$TEST_DIR/stock-super.sparse.img"
+mkdir -p "$TEST_DIR/output-sparse"
+SAMSUNG_DEVICE_MODEL=SM-TEST \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/stock-super.sparse.img" \
+    "$TEST_DIR/gsi.img" \
+    smoke-sparse \
+    "$TEST_DIR/work-sparse" \
+    "$TEST_DIR/output-sparse"
+
+[ -s "$TEST_DIR/output-sparse/super.img" ]
+[ -s "$TEST_DIR/output-sparse/smoke-sparse.tar" ]
 
 echo "==> Samsung stock-super packaging test passed."
