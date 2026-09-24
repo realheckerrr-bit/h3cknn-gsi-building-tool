@@ -24,7 +24,14 @@ OUTPUT_NAME=$(printf '%s' "$REQUESTED_OUTPUT_NAME" \
   | sed -E 's/[^A-Za-z0-9._-]+/_/g; s/^[.-]+//; s/[.-]+$//')
 [ -n "$OUTPUT_NAME" ] || OUTPUT_NAME="samsung-gsi-super"
 DEVICE_MODEL="${SAMSUNG_DEVICE_MODEL:-unknown}"
-REMOVE_PRODUCT="${SAMSUNG_REMOVE_PRODUCT:-0}"
+if [ -n "${SAMSUNG_REMOVE_PRODUCT:-}" ]; then
+  REMOVE_PRODUCT="$SAMSUNG_REMOVE_PRODUCT"
+else
+  case "$DEVICE_MODEL" in
+    SM-M127*|SM-F127*|SM-A127*) REMOVE_PRODUCT=1 ;;
+    *) REMOVE_PRODUCT=0 ;;
+  esac
+fi
 
 case "$REMOVE_PRODUCT" in
   0|1) ;;

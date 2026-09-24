@@ -158,8 +158,7 @@ grep -F 'Removed logical partitions: product' \
 
 # With no boot_url, the exact stock AP boot image is carried automatically.
 mkdir -p "$TEST_DIR/output-ap-auto"
-SAMSUNG_DEVICE_MODEL=SM-TEST \
-SAMSUNG_REMOVE_PRODUCT=1 \
+SAMSUNG_DEVICE_MODEL=SM-M127F \
   bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
     "$TEST_DIR/ap.tar" \
     "$TEST_DIR/gsi.img" \
@@ -168,6 +167,8 @@ SAMSUNG_REMOVE_PRODUCT=1 \
     "$TEST_DIR/output-ap-auto"
 tar -tf "$TEST_DIR/output-ap-auto/smoke-ap-auto-odin.tar" \
   | grep -Fx 'boot.img.lz4' >/dev/null
+grep -F 'Removed logical partitions: product' \
+  "$TEST_DIR/output-ap-auto/smoke-ap-auto.build-info.txt" >/dev/null
 
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \
