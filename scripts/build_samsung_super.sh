@@ -192,6 +192,9 @@ LPM_ARGS=(
 # Add every original group. A zero maximum is legal in some metadata versions;
 # derive a conservative limit from the physical device in that case.
 for group in "${!GROUP_MAX[@]}"; do
+  if [ "$group" = "default" ]; then
+    continue
+  fi
   group_limit="${GROUP_MAX[$group]}"
   if [ "$group_limit" -le 0 ]; then
     group_limit=$((DEVICE_SIZE - 4 * 1024 * 1024))
