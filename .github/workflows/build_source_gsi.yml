@@ -80,7 +80,7 @@ jobs:
         run: |
           # BUG FIX: path must be absolute or relative to GITHUB_WORKSPACE
           cd "$GITHUB_WORKSPACE/android_source/out_gsi"
-          sha256sum *.img.xz > SHA256SUMS.txt
+          sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
           echo "RELEASE_TAG=src-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
       - name: "📤 Upload GSI Artifacts"
@@ -89,6 +89,7 @@ jobs:
           name: ${{ github.event.inputs.variant }}
           path: |
             ${{ github.workspace }}/android_source/out_gsi/*.img.xz
+            ${{ github.workspace }}/android_source/out_gsi/*.img.gz
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
           retention-days: 7
 
@@ -101,7 +102,7 @@ jobs:
           name: "${{ github.event.inputs.variant }} Source GSI"
           body: |
             ## 📱 Source-Built Treble GSI
-            - **Manifest**: `${{ github.event.inputs.manifest_url }}` (`${{ github.event.inputs.manifest_branch }}`)\n
+            - **Manifest**: `${{ github.event.inputs.manifest_url }}` (`${{ github.event.inputs.manifest_branch }}`)
             - **Variant**: `${{ github.event.inputs.variant }}`
             - **Build Type**: `${{ github.event.inputs.build_type }}`
             - **Treble Layer**: TrebleDroid `${{ github.event.inputs.treble_branch }}`
@@ -117,6 +118,7 @@ jobs:
             ```
           files: |
             ${{ github.workspace }}/android_source/out_gsi/*.img.xz
+            ${{ github.workspace }}/android_source/out_gsi/*.img.gz
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

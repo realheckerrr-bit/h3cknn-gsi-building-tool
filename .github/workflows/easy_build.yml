@@ -81,7 +81,7 @@ jobs:
       - name: "🔑 Checksum"
         run: |
           cd workspace/output
-          sha256sum *.img.xz > SHA256SUMS.txt
+          sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
           echo "RELEASE_TAG=easy-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
       - name: "📊 Build Summary"
@@ -99,6 +99,7 @@ jobs:
           name: "${{ github.event.inputs.output_name }}-GSI"
           path: |
             workspace/output/*.img.xz
+            workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
           retention-days: 14
 
@@ -133,6 +134,7 @@ jobs:
             ```
           files: |
             workspace/output/*.img.xz
+            workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -58,6 +58,11 @@ fi
 
 echo "==> [EXTRACT] Downloaded file: $(basename "$ROM_FILE") ($(du -h "$ROM_FILE" | cut -f1))"
 
+# Keep the resolved local input path available to the master pipeline.  Direct
+# GSI inputs can be passed through without mounting and rebuilding them, which
+# preserves sparse-image layout and other boot-sensitive metadata.
+printf '%s\n' "$ROM_FILE" > "$WORK_DIR/source-input.path"
+
 cd "$EXTRACT_DIR"
 echo "==> [EXTRACT] Unpacking archive container..."
 

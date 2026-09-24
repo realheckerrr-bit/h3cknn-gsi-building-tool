@@ -22,6 +22,7 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
   - Disables OEM-specific proprietary daemons that crash without stock vendor HALs (`knox`, `vaultkeeper`, `miui_daemon`, `faceunlock`).
   - Injects **Treble hardware overlays** (`treble-overlay.apk`) for adaptive brightness, cutouts, and status bar padding.
   - Injects **TrebleApp** (`packages/apps/TrebleApp`) for hardware toggles (VoLTE, fingerprint scanner, high refresh rates).
+  - Detects direct community GSI inputs and preserves their original sparse/filesystem layout instead of unpacking and rebuilding them. Set `FORCE_REPACK_GSI=1` only when deliberately converting an OEM system image.
 - **Automated GitHub Actions CI/CD:**
   - One-click build via `workflow_dispatch`.
   - Automatic runner disk cleanup (+35GB free space optimization).

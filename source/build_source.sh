@@ -50,10 +50,13 @@ cp "$SYSTEM_IMG" "$FINAL_IMG"
 
 echo "==> [SOURCE-BUILD] Compressing output with XZ..."
 xz -9 -T0 -k "$FINAL_IMG"
+echo "==> [SOURCE-BUILD] Compressing output with GZIP for DSU Sideloader..."
+gzip -9 -c "$FINAL_IMG" > "${FINAL_IMG}.gz"
 
 echo "================================================================="
 echo "==> [SOURCE-BUILD] BUILD SUCCEEDED!"
 echo "  Raw Image:        $FINAL_IMG"
 echo "  Compressed Image: ${FINAL_IMG}.xz"
+echo "  DSU Image:        ${FINAL_IMG}.gz"
 echo "  Size:             $(du -h "${FINAL_IMG}.xz" | cut -f1)"
 echo "================================================================="

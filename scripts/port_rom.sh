@@ -61,10 +61,47 @@ bash "$SCRIPT_DIR/extract_rom.sh" "$ROM_URL" "$WORK_DIR"
 
 SYSTEM_ROOT="$WORK_DIR/system_root"
 
-# 3. Patch Treble
+# 3. Direct GSI inputs already contain a Treble-compatible system image.
+# Rebuilding those images can change sparse layout, filesystem metadata, or
+# filesystem features that the original GSI relies on.  Detect the common
+# direct-GSI markers and preserve the image byte layout instead.
+SOURCE_INPUT=""
+if [ -f "$WORK_DIR/source-input.path" ]; then
+  SOURCE_INPUT=$(head -n 1 "$WORK_DIR/source-input.path")
+fi
+
+BUILD_PROP=""
+for candidate in \
+  "$SYSTEM_ROOT/system/build.prop" \
+  "$SYSTEM_ROOT/system/system/build.prop" \
+  "$SYSTEM_ROOT/build.prop"; do
+  if [ -f "$candidate" ]; then
+    BUILD_PROP="$candidate"
+    break
+  fi
+done
+
+IS_EXISTING_GSI=0
+if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ] && [ -f "$BUILD_PROP" ]; then
+  SOURCE_BASENAME=$(basename "$SOURCE_INPUT" | tr '[:upper:]' '[:lower:]')
+  if grep -Eq '^ro\.treble\.enabled=true$' "$BUILD_PROP" \
+    && (grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP" \
+      || printf '%s' "$SOURCE_BASENAME" | grep -Eiq '(^|[-_.])(gsi|treble|arm64_[ab][a-z][a-z]?n)([-_.]|$)'); then
+    IS_EXISTING_GSI=1
+  fi
+fi
+
+if [ "$IS_EXISTING_GSI" = "1" ]; then
+  echo "==> [PORT] Existing Treble GSI detected; preserving source image layout."
+  bash "$SCRIPT_DIR/preserve_gsi.sh" "$SOURCE_INPUT" "$OUTPUT_NAME" "$WORK_DIR"
+  echo "==> GSI Build pipeline completed successfully (passthrough mode)."
+  exit 0
+fi
+
+# 4. Patch Treble
 bash "$SCRIPT_DIR/patch_treble.sh" "$SYSTEM_ROOT" "$ROM_TYPE"
 
-# 4. Repack into GSI
+# 5. Repack into GSI
 bash "$SCRIPT_DIR/repack_gsi.sh" "$SYSTEM_ROOT" "$OUTPUT_NAME" "$FS_TYPE"
 
 echo "==> GSI Build pipeline completed successfully."
