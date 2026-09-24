@@ -203,5 +203,15 @@ else
   sudo umount "$MOUNT_DIR"
 fi
 
+# Android images commonly keep build.prop root-readable only.  The porting
+# pipeline needs it for detection and release metadata, but changing every
+# extracted file's mode would damage permissions if an OEM image is rebuilt.
+# Make only build.prop files readable; the source image itself is untouched.
+if [ "$(id -u)" -eq 0 ]; then
+  find "$OUTPUT_DIR" -type f -name build.prop -exec chmod 644 {} + 2>/dev/null || true
+else
+  sudo find "$OUTPUT_DIR" -type f -name build.prop -exec sudo chmod 644 {} + 2>/dev/null || true
+fi
+
 echo "==> [EXTRACT] Successfully extracted system partition to: $OUTPUT_DIR"
 ls -la "$OUTPUT_DIR" | head -n 20
