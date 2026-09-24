@@ -92,7 +92,9 @@ elif [ "$FILE_EXT" = "bin" ] || echo "$FILE_TYPE" | grep -q "data"; then
   # Could be payload.bin
   cp "$ROM_FILE" "$EXTRACT_DIR/payload.bin"
 elif [ "$FILE_EXT" = "img" ]; then
-  cp "$ROM_FILE" "$EXTRACT_DIR/input.img"
+  # A direct uncompressed GSI is already the system partition.  Normalize its
+  # name so the common system-image discovery path can process it below.
+  cp "$ROM_FILE" "$EXTRACT_DIR/system.img"
 else
   # Fallback: try 7z, then treat as single image
   7z x -y "$ROM_FILE" -o"$EXTRACT_DIR" 2>/dev/null || cp "$ROM_FILE" "$EXTRACT_DIR/"
