@@ -124,7 +124,8 @@ if ! python3 "$TOOLS_DIR/lpunpack.py" "$STOCK_IMAGE" "$PARTITION_DIR" >/dev/null
 fi
 
 META_JSON="$TEMP_DIR/metadata.json"
-if ! python3 "$TOOLS_DIR/lpunpack.py" --info --format json "$STOCK_IMAGE" | tee "$META_JSON"; then
+python3 "$TOOLS_DIR/lpunpack.py" --info --format json "$STOCK_IMAGE" > "$META_JSON" || true
+if [ ! -s "$META_JSON" ]; then
   echo "[-] ERROR: Could not read usable logical-partition metadata from stock super:" >&2
   cat "$META_JSON" >&2
   exit 1
