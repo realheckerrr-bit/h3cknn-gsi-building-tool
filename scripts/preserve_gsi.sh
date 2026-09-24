@@ -28,6 +28,7 @@ trap 'rm -f "$TMP_IMG" "$DSU_RAW_IMG"' EXIT
 FILE_TYPE=$(file -b "$INPUT_FILE" | tr '[:upper:]' '[:lower:]')
 FILE_EXT="${INPUT_FILE##*.}"
 FILE_EXT=$(printf '%s' "$FILE_EXT" | tr '[:upper:]' '[:lower:]')
+FILE_MAGIC=$(od -An -tx1 -N6 "$INPUT_FILE" 2>/dev/null | tr -d '[:space:]')
 
 echo "==> [PRESERVE-GSI] Input: $(basename "$INPUT_FILE")"
 echo "==> [PRESERVE-GSI] Keeping the original filesystem/image layout"
@@ -43,8 +44,22 @@ case "$FILE_EXT" in
     cp -- "$INPUT_FILE" "$TMP_IMG"
     ;;
   *)
-    echo "[-] ERROR: Existing GSI must be .img, .img.xz, or .img.gz (detected: $FILE_TYPE)" >&2
-    exit 1
+    # Google Drive and some release mirrors save downloads without a useful
+    # extension. Identify the compression stream by its actual type before
+    # rejecting it; raw filesystem images are copied unchanged.
+    if printf '%s' "$FILE_TYPE" | grep -q "xz compressed" || [ "${FILE_MAGIC:0:12}" = "fd377a585a00" ]; then
+      xz -dc "$INPUT_FILE" > "$TMP_IMG"
+      FILE_EXT="xz"
+    elif printf '%s' "$FILE_TYPE" | grep -q "gzip compressed" || [ "${FILE_MAGIC:0:4}" = "1f8b" ]; then
+      gzip -dc "$INPUT_FILE" > "$TMP_IMG"
+      FILE_EXT="gz"
+    elif printf '%s' "$FILE_TYPE" | grep -Eq "filesystem|android sparse"; then
+      cp -- "$INPUT_FILE" "$TMP_IMG"
+      FILE_EXT="img"
+    else
+      echo "[-] ERROR: Existing GSI must be .img, .img.xz, or .img.gz (detected: $FILE_TYPE)" >&2
+      exit 1
+    fi
     ;;
 esac
 

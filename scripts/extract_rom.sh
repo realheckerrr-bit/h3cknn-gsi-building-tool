@@ -88,6 +88,12 @@ elif echo "$FILE_TYPE" | grep -q "gzip\|tar"; then
   tar -xf "$ROM_FILE" -C "$EXTRACT_DIR"
 elif echo "$FILE_TYPE" | grep -q "7-zip\|7z"; then
   7z x -y "$ROM_FILE" -o"$EXTRACT_DIR"
+elif echo "$FILE_TYPE" | grep -Eq "filesystem|android sparse"; then
+  # `file` describes raw ext4/EROFS images as filesystem *data*.  Check for
+  # filesystem signatures before the generic `data` fallback, otherwise a
+  # direct GSI .img (or an extensionless Drive download) is renamed to
+  # payload.bin and never reaches the preservation path.
+  cp "$ROM_FILE" "$EXTRACT_DIR/system.img"
 elif [ "$FILE_EXT" = "bin" ] || echo "$FILE_TYPE" | grep -q "data"; then
   # Could be payload.bin
   cp "$ROM_FILE" "$EXTRACT_DIR/payload.bin"
