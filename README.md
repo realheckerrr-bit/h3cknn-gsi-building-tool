@@ -129,6 +129,14 @@ device-specific recovery, or the kernel. Keep the stock vendor/firmware for
 the exact model and use the matching recovery/kernel instructions before
 blaming the downloaded image.
 
+On Exynos 850 M12/A12 devices, Android 14+ GSI installations commonly also
+need a compatible device kernel (often the Physwizz kernel variant for the
+loader/firmware binary) in addition to the system image. The builder cannot
+embed that kernel safely because `SM-M127F`, `SM-M127G`, and regional firmware
+binary versions are not interchangeable. See the
+[Exynos 850 GSI notes](https://github-wiki-see.page/m/phhusson/treble_experimentations/wiki/Samsung-Galaxy-A12s-%28Exynos-850%29)
+and use the kernel/TWRP package matching the exact model and bootloader.
+
 DSU is a separate path from TWRP. It needs a working Android installation,
 dynamic partitions, an unlocked bootloader, and a device/installer mode that
 accepts the GSI signature ([Android DSU requirements](https://developer.android.com/topic/dsu)). DSU Sideloader can provide extra ADB, Shizuku, root,
