@@ -24,6 +24,15 @@ OUTPUT_NAME=$(printf '%s' "$REQUESTED_OUTPUT_NAME" \
   | sed -E 's/[^A-Za-z0-9._-]+/_/g; s/^[.-]+//; s/[.-]+$//')
 [ -n "$OUTPUT_NAME" ] || OUTPUT_NAME="samsung-gsi-super"
 DEVICE_MODEL="${SAMSUNG_DEVICE_MODEL:-unknown}"
+REMOVE_PRODUCT="${SAMSUNG_REMOVE_PRODUCT:-0}"
+
+case "$REMOVE_PRODUCT" in
+  0|1) ;;
+  *)
+    echo "[-] ERROR: SAMSUNG_REMOVE_PRODUCT must be 0 or 1." >&2
+    exit 2
+    ;;
+esac
 
 if [ -z "$STOCK_INPUT" ] || [ -z "$GSI_INPUT" ]; then
   echo "Usage: build_samsung_super.sh <stock-super|AP.tar.md5> <gsi.img|img.xz|img.gz> [output_name] [work_dir] [output_dir]" >&2
@@ -208,6 +217,7 @@ if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_SIZE" -le 0 ] || [ "${#PARTITIONS[@]}" -e
 fi
 
 SYSTEM_FOUND=0
+REMOVED_PARTITIONS=()
 LPM_ARGS=(
   --metadata-size "$METADATA_SIZE"
   --super-name super
@@ -233,6 +243,13 @@ for partition_entry in "${PARTITIONS[@]}"; do
   if [ "$partition_name" = "system_a" ] || [ "$partition_name" = "system_b" ]; then
     echo "[-] ERROR: Stock super uses slot-suffixed system partitions; refusing an unsafe replacement." >&2
     exit 1
+  fi
+
+  if [ "$REMOVE_PRODUCT" = "1" ] \
+    && { [ "$partition_name" = "product" ] || [ "$partition_name" = "product_a" ] || [ "$partition_name" = "product_b" ]; }; then
+    echo "==> [SAMSUNG-SUPER] Removing OEM $partition_name from rebuilt super."
+    REMOVED_PARTITIONS+=("$partition_name")
+    continue
   fi
 
   if [ "$partition_name" = "system" ]; then
@@ -407,12 +424,13 @@ Device model: $DEVICE_MODEL
 Stock source: $(basename "$STOCK_INPUT")
 GSI source: $(basename "$GSI_INPUT")
 Image mode: stock-super-system-replacement
-Preserved: stock vendor, product, odm, system_ext, boot, recovery, and kernel files
+Preserved: stock vendor, odm, system_ext, boot, recovery, and kernel files
 Replaced: system logical partition only
 Raw super tar: $(basename "$RAW_TAR_OUT")
 Samsung LZ4 image: $(basename "$SUPER_LZ4_OUT")
 Odin package: $ODIN_STATUS
 Boot image: $BOOT_STATUS
+Removed logical partitions: ${REMOVED_PARTITIONS[*]:-none}
 AVB: matching AP vbmeta has flags 0x03 only when the Odin package was created
 Warning: use only with the exact matching Samsung model/AP/firmware. Factory reset and device-specific multidisabler/kernel steps may still be required.
 EOF

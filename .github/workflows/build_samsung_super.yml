@@ -34,6 +34,14 @@ on:
         required: false
         default: ""
         type: string
+      remove_product:
+        description: "Remove Samsung product logical partition (recommended for Exynos 850 GSI packages)"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 permissions:
   contents: write
@@ -74,10 +82,16 @@ jobs:
           DEVICE_MODEL_INPUT: ${{ inputs.device_model }}
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
           BOOT_INPUT_PATH: workspace/samsung-inputs/boot-input
+          REMOVE_PRODUCT_INPUT: ${{ inputs.remove_product }}
         run: |
           chmod +x scripts/*.sh
           if [ -f "$BOOT_INPUT_PATH" ]; then
             export SAMSUNG_BOOT_INPUT="$BOOT_INPUT_PATH"
+          fi
+          if [ "$REMOVE_PRODUCT_INPUT" = "true" ]; then
+            export SAMSUNG_REMOVE_PRODUCT=1
+          else
+            export SAMSUNG_REMOVE_PRODUCT=0
           fi
           SAMSUNG_DEVICE_MODEL="$DEVICE_MODEL_INPUT" \
             bash scripts/build_samsung_super.sh \
@@ -118,7 +132,8 @@ jobs:
             - **GSI source**: `${{ inputs.gsi_url }}`
             - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains its matching `vbmeta.img.lz4`.
             - **Optional boot**: an explicitly supplied exact-device `boot.img.lz4` is included when provided; do not use a foreign kernel.
-            - **Preserved**: stock vendor/product/odm/system_ext, recovery, and kernel files; boot is replaced only when the optional exact-device boot input is supplied.
+            - **Product**: `${{ inputs.remove_product }}` (removing Samsung product is recommended for Exynos 850 GSI packages).
+            - **Preserved**: stock vendor/odm/system_ext, recovery, and kernel files; boot is replaced only when the optional exact-device boot input is supplied.
 
             The Odin tar contains Samsung content-size LZ4 `super.img.lz4` plus the matching AP vbmeta
             with AVB disable flags. Use the exact matching Samsung firmware, recovery, multidisabler,

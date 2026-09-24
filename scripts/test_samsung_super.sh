@@ -16,12 +16,14 @@ done
 
 truncate -s 8M "$TEST_DIR/stock-system.img"
 truncate -s 8M "$TEST_DIR/vendor.img"
+truncate -s 8M "$TEST_DIR/product.img"
 truncate -s 8M "$TEST_DIR/gsi.img"
 mke2fs -t ext4 -F -L system "$TEST_DIR/stock-system.img" >/dev/null
 mke2fs -t ext4 -F -L vendor "$TEST_DIR/vendor.img" >/dev/null
+mke2fs -t ext4 -F -L product "$TEST_DIR/product.img" >/dev/null
 mke2fs -t ext4 -F -L system "$TEST_DIR/gsi.img" >/dev/null
 
-# Build a small sparse stock super with two logical partitions.
+# Build a small sparse stock super with three logical partitions.
 lpmake \
   --metadata-size 65536 \
   --super-name super \
@@ -32,6 +34,8 @@ lpmake \
   --image system="$TEST_DIR/stock-system.img" \
   --partition vendor:readonly:8388608:main \
   --image vendor="$TEST_DIR/vendor.img" \
+  --partition product:readonly:8388608:main \
+  --image product="$TEST_DIR/product.img" \
   --output "$TEST_DIR/stock-super.img"
 
 mkdir -p "$TEST_DIR/output"
@@ -105,6 +109,7 @@ pathlib.Path(sys.argv[1]).write_bytes(data)
 PY
 mkdir -p "$TEST_DIR/output-ap"
 SAMSUNG_DEVICE_MODEL=SM-TEST \
+SAMSUNG_REMOVE_PRODUCT=1 \
 SAMSUNG_BOOT_INPUT="$TEST_DIR/boot.img" \
   bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
     "$TEST_DIR/ap.tar" \
@@ -128,6 +133,16 @@ import sys
 data = pathlib.Path(sys.argv[1]).read_bytes()
 assert struct.unpack_from(">I", data, 120)[0] == 3
 PY
+mkdir -p "$TEST_DIR/output-ap/unpacked"
+python3 "$ROOT_DIR/tools/lpunpack.py" \
+  "$TEST_DIR/output-ap/super.img" \
+  "$TEST_DIR/output-ap/unpacked" >/dev/null
+if [ -e "$TEST_DIR/output-ap/unpacked/product.img" ]; then
+  echo "[-] Product logical partition was not removed." >&2
+  exit 1
+fi
+grep -F 'Removed logical partitions: product' \
+  "$TEST_DIR/output-ap/smoke-ap.build-info.txt" >/dev/null
 
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \
