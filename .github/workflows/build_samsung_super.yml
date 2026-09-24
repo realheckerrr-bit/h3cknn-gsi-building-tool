@@ -168,8 +168,14 @@ jobs:
           }
           NAME_ESCAPED=$(printf '%s' "$OUTPUT_NAME_INPUT" | html_escape)
           MODEL_ESCAPED=$(printf '%s' "$DEVICE_MODEL_INPUT" | html_escape)
-          TEXT=$(printf '<b>%s Samsung Super GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nDevice: %s\nSystem-only replacement inside matching stock super\n</blockquote>' \
-            "$NAME_ESCAPED" "$RELEASE_URL" "$MODEL_ESCAPED")
+          BUILD_INFO_PATH=$(find workspace/output -maxdepth 1 -type f -name '*.build-info.txt' -print -quit)
+          if [ -n "$BUILD_INFO_PATH" ]; then
+            BUILD_INFO_ESCAPED=$(html_escape < "$BUILD_INFO_PATH")
+          else
+            BUILD_INFO_ESCAPED=$(printf 'Device: %s\nBuild metadata was not produced.' "$MODEL_ESCAPED")
+          fi
+          TEXT=$(printf '<b>%s Samsung Super GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\n%s\n</blockquote>' \
+            "$NAME_ESCAPED" "$RELEASE_URL" "$BUILD_INFO_ESCAPED")
           curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
