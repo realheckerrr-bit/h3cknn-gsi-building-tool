@@ -102,8 +102,6 @@ lz4 -f -B6 --content-size "$TEST_DIR/ap/super.img" "$TEST_DIR/ap/super.img.lz4" 
 lz4 -f -B6 --content-size "$TEST_DIR/ap/vbmeta.img" "$TEST_DIR/ap/vbmeta.img.lz4" >/dev/null
 lz4 -f -B6 --content-size "$TEST_DIR/ap/vbmeta_system.img" "$TEST_DIR/ap/vbmeta_system.img.lz4" >/dev/null
 lz4 -f -B6 --content-size "$TEST_DIR/ap/vbmeta_vendor.img" "$TEST_DIR/ap/vbmeta_vendor.img.lz4" >/dev/null
-tar -cf "$TEST_DIR/ap.tar" -C "$TEST_DIR/ap" \
-  super.img.lz4 vbmeta.img.lz4 vbmeta_system.img.lz4 vbmeta_vendor.img.lz4
 python3 - "$TEST_DIR/boot.img" <<'PY'
 import pathlib
 import sys
@@ -112,6 +110,10 @@ data = bytearray(4096)
 data[:8] = b"ANDROID!"
 pathlib.Path(sys.argv[1]).write_bytes(data)
 PY
+cp "$TEST_DIR/boot.img" "$TEST_DIR/ap/ap-boot.img"
+lz4 -f -B6 --content-size "$TEST_DIR/ap/ap-boot.img" "$TEST_DIR/ap/boot.img.lz4" >/dev/null
+tar -cf "$TEST_DIR/ap.tar" -C "$TEST_DIR/ap" \
+  super.img.lz4 vbmeta.img.lz4 vbmeta_system.img.lz4 vbmeta_vendor.img.lz4 boot.img.lz4
 mkdir -p "$TEST_DIR/output-ap"
 SAMSUNG_DEVICE_MODEL=SM-TEST \
 SAMSUNG_REMOVE_PRODUCT=1 \
@@ -153,6 +155,19 @@ if [ -e "$TEST_DIR/output-ap/unpacked/product.img" ]; then
 fi
 grep -F 'Removed logical partitions: product' \
   "$TEST_DIR/output-ap/smoke-ap.build-info.txt" >/dev/null
+
+# With no boot_url, the exact stock AP boot image is carried automatically.
+mkdir -p "$TEST_DIR/output-ap-auto"
+SAMSUNG_DEVICE_MODEL=SM-TEST \
+SAMSUNG_REMOVE_PRODUCT=1 \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/ap.tar" \
+    "$TEST_DIR/gsi.img" \
+    smoke-ap-auto \
+    "$TEST_DIR/work-ap-auto" \
+    "$TEST_DIR/output-ap-auto"
+tar -tf "$TEST_DIR/output-ap-auto/smoke-ap-auto-odin.tar" \
+  | grep -Fx 'boot.img.lz4' >/dev/null
 
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \

@@ -76,6 +76,7 @@ echo "==> [SAMSUNG-SUPER] GSI input: $(basename "$GSI_INPUT")"
 # super.img.lz4.  The AP is only used as the source of stock logical partitions.
 STOCK_SOURCE="$STOCK_INPUT"
 AP_VBMETA_SOURCES=()
+AP_BOOT_SOURCE=""
 STOCK_TYPE=$(file -b "$STOCK_SOURCE" | tr '[:upper:]' '[:lower:]')
 if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
   || printf '%s' "$STOCK_INPUT" | grep -Eiq '\.tar(\.md5)?$'; then
@@ -94,6 +95,7 @@ if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
       -o -name 'vbmeta_vendor.img.lz4' \
     \) -print | sort
   )
+  AP_BOOT_SOURCE=$(find "$AP_DIR" -type f \( -name 'boot.img.lz4' -o -name 'boot.img' \) -print -quit)
 fi
 
 STOCK_IMAGE="$TEMP_DIR/stock.super.img"
@@ -402,10 +404,14 @@ else
 fi
 
 # Some Exynos 850 Android 14 installations need a device-specific custom
-# kernel. Only include one when the caller explicitly provides it; using a
-# foreign boot image is more dangerous than omitting it. Accept a raw
-# boot.img, Samsung boot.img.lz4, or an archive containing either.
-BOOT_INPUT="${SAMSUNG_BOOT_INPUT:-}"
+# kernel. Prefer an explicitly supplied exact-device boot image; otherwise
+# carry the stock boot image from the matching AP when one is available.
+# Accept a raw boot.img, Samsung boot.img.lz4, or an archive containing either.
+BOOT_INPUT="${SAMSUNG_BOOT_INPUT:-$AP_BOOT_SOURCE}"
+BOOT_INPUT_DESCRIPTION="matching AP stock boot image"
+if [ -n "${SAMSUNG_BOOT_INPUT:-}" ]; then
+  BOOT_INPUT_DESCRIPTION="explicit exact-device boot input"
+fi
 if [ -n "$BOOT_INPUT" ]; then
   if [ ! -f "$BOOT_INPUT" ]; then
     echo "[-] ERROR: Explicit Samsung boot input was not found: $BOOT_INPUT" >&2
@@ -449,7 +455,7 @@ if [ -n "$BOOT_INPUT" ]; then
     exit 1
   fi
   ODIN_MEMBERS+=("$(basename "$BOOT_LZ4_OUT")")
-  BOOT_STATUS="Included: $(basename "$BOOT_LZ4_OUT") from $(basename "$BOOT_INPUT")"
+  BOOT_STATUS="Included: $(basename "$BOOT_LZ4_OUT") from $BOOT_INPUT_DESCRIPTION ($(basename "$BOOT_INPUT"))"
 fi
 
 if [ "$VBMETA_READY" = "1" ]; then

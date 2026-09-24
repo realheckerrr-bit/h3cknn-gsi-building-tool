@@ -102,8 +102,8 @@ Use **Build Samsung Super GSI Package** only with the exact stock firmware for
 the phone. Provide a direct URL to the matching `AP.tar.md5`, the GSI URL, and
 the exact model. An AP archive is required for the Odin output: the workflow
 preserves the stock logical partitions, replaces only `system`, converts the
-result to Samsung content-size `super.img.lz4`, and carries the matching root,
-system, and vendor vbmeta images present in the AP with AVB
+result to Samsung content-size `super.img.lz4`, carries the matching AP boot
+image when present, and carries the matching root, system, and vendor vbmeta images present in the AP with AVB
 hashtree/verification-disabled flags. It never
 changes boot, vendor, recovery, or kernel files. The `remove_product` input is
 enabled by default for Exynos 850 packages because the stock Samsung `product`
@@ -119,8 +119,9 @@ Odin tar only on the exact same model and firmware family. Keep the matching
 BL/CP/CSC package available; a factory reset and the device-specific
 multidisabler/kernel procedure may still be required. For Exynos 850 Android
 14+ installations that need a custom kernel, use the workflow's optional
-`boot_url` input with an exact-device `boot.img.lz4`; never use a boot image
-from another model or firmware binary.
+`boot_url` input with an exact-device `boot.img.lz4`; it overrides the stock
+boot extracted from the AP. Never use a boot image from another model or
+firmware binary.
 
 The resulting `.tar` remains device-specific. Follow the matching Samsung
 recovery, multidisabler, data-format, and kernel procedure. A package made

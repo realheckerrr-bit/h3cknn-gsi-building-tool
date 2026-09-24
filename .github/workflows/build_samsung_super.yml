@@ -131,7 +131,7 @@ jobs:
             - **Stock source**: `${{ inputs.stock_url }}`
             - **GSI source**: `${{ inputs.gsi_url }}`
             - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains supported matching vbmeta images; root/system/vendor vbmeta images present in that AP are patched and included.
-            - **Optional boot**: an explicitly supplied exact-device `boot.img.lz4` is included when provided; do not use a foreign kernel.
+            - **Boot**: the exact AP stock `boot.img.lz4` is included automatically when present; an explicitly supplied `boot_url` overrides it for a matching custom kernel.
             - **Product**: `${{ inputs.remove_product }}` (removing Samsung product is recommended for Exynos 850 GSI packages).
             - **Preserved**: stock vendor/odm/system_ext, recovery, and kernel files; boot is replaced only when the optional exact-device boot input is supplied.
 
