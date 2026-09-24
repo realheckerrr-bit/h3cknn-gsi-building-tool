@@ -21,7 +21,9 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 TMP_IMG="$OUTPUT_DIR/.${OUTPUT_NAME}.preserve.img"
-trap 'rm -f "$TMP_IMG"' EXIT
+DSU_IMG="$TMP_IMG"
+DSU_RAW_IMG="$OUTPUT_DIR/.${OUTPUT_NAME}.dsu.raw.img"
+trap 'rm -f "$TMP_IMG" "$DSU_RAW_IMG"' EXIT
 
 FILE_TYPE=$(file -b "$INPUT_FILE" | tr '[:upper:]' '[:lower:]')
 FILE_EXT="${INPUT_FILE##*.}"
@@ -51,6 +53,21 @@ if [ ! -s "$TMP_IMG" ]; then
   exit 1
 fi
 
+# DSU's gzip input must be an unsparsed raw image.  Keep the original image
+# untouched for the XZ flashing asset, but expand Android sparse input for the
+# separate DSU asset.  This matters for community GSIs that ship as sparse
+# system images; passing a sparse stream to DSU can fail during installation.
+IMAGE_MAGIC=$(od -An -tx1 -N4 "$TMP_IMG" 2>/dev/null | tr -d '[:space:]')
+if [ "$IMAGE_MAGIC" = "3aff26ed" ]; then
+  if ! command -v simg2img >/dev/null 2>&1; then
+    echo "[-] ERROR: Android sparse GSI detected, but simg2img is unavailable." >&2
+    exit 1
+  fi
+  echo "==> [PRESERVE-GSI] Expanding sparse image for the DSU gzip asset"
+  simg2img "$TMP_IMG" "$DSU_RAW_IMG"
+  DSU_IMG="$DSU_RAW_IMG"
+fi
+
 # Keep an existing XZ byte-for-byte when possible.  For all other inputs,
 # recompress only the image stream; no filesystem contents are mounted or
 # modified.
@@ -60,7 +77,7 @@ else
   xz -9 -T0 -c "$TMP_IMG" > "$OUTPUT_DIR/${OUTPUT_NAME}.img.xz"
 fi
 
-gzip -9 -c "$TMP_IMG" > "$OUTPUT_DIR/${OUTPUT_NAME}.img.gz"
+gzip -9 -c "$DSU_IMG" > "$OUTPUT_DIR/${OUTPUT_NAME}.img.gz"
 
 echo "================================================================="
 echo "==> [PRESERVE-GSI] GSI REWRAPPED SUCCESSFULLY!"
