@@ -104,7 +104,11 @@ the exact model. An AP archive is required for the Odin output: the workflow
 preserves the stock logical partitions, replaces only `system`, converts the
 result to Samsung content-size `super.img.lz4`, and carries the matching
 `vbmeta.img.lz4` with AVB hashtree/verification-disabled flags. It never
-changes boot, vendor, recovery, or kernel files. A standalone `super.img` or
+changes boot, vendor, recovery, or kernel files. The `remove_product` input is
+enabled by default for Exynos 850 packages because the stock Samsung `product`
+logical partition can conflict with the GSI or consume dynamic-partition space
+needed by `system`; set it to `false` only when the exact device guide requires
+keeping it. A standalone `super.img` or
 `super.img.lz4` input is accepted for inspection/raw output, but it cannot
 produce a safe Odin tar without the matching AP vbmeta.
 
