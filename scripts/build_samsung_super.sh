@@ -30,6 +30,10 @@ if [ -z "$STOCK_INPUT" ] || [ -z "$GSI_INPUT" ]; then
   exit 2
 fi
 
+if [ -n "${SAMSUNG_BOOT_INPUT:-}" ]; then
+  echo "==> [SAMSUNG-SUPER] Optional exact-device boot input: $SAMSUNG_BOOT_INPUT"
+fi
+
 for command_name in file lz4 simg2img tar python3 stat od sed; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "[-] ERROR: Required command is missing: $command_name" >&2

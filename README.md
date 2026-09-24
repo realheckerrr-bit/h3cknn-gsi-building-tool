@@ -184,6 +184,11 @@ DSU reports verification or installation failure, use its diagnostic log and
 try the TWRP System Image path instead; repacking the GSI will not solve a
 signature, vendor, kernel, or AVB failure.
 
+Standard Android DSU requires a Google/OEM-trusted system signature. This
+project cannot manufacture Samsung's signing key, so a community `.img.gz`
+may install only through a device/DSU-Sideloader mode that accepts unlocked or
+custom images; a failed DSU install is not evidence that the gzip is corrupt.
+
 ### Fastboot-based devices
 
 1. Extract the downloaded image:
