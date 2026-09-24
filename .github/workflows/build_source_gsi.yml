@@ -84,6 +84,12 @@ jobs:
             "$BUILD_TYPE_INPUT"
 
       - name: "🔑 Generate Checksums"
+        env:
+          VARIANT_INPUT: ${{ inputs.variant }}
+          BUILD_TYPE_INPUT: ${{ inputs.build_type }}
+          MANIFEST_URL_INPUT: ${{ inputs.manifest_url }}
+          MANIFEST_BRANCH_INPUT: ${{ inputs.manifest_branch }}
+          TREBLE_BRANCH_INPUT: ${{ inputs.treble_branch }}
         run: |
           # BUG FIX: path must be absolute or relative to GITHUB_WORKSPACE
           bash scripts/validate_gsi_output.sh \
@@ -91,6 +97,28 @@ jobs:
             "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.gz
           cd "$GITHUB_WORKSPACE/android_source/out_gsi"
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
+          IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
+          RAW_IMAGE_BYTES=$(xz --robot --list "$IMAGE_XZ" | awk -F '\t' '$1 == "totals" { print $5 }')
+          RAW_IMAGE_SIZE=$(numfmt --to=iec-i --suffix=B "$RAW_IMAGE_BYTES")
+          cat > build-info.txt <<EOF
+          GSI build report
+          ================
+          Output variant: $VARIANT_INPUT
+          Build type: $BUILD_TYPE_INPUT
+          Manifest: $MANIFEST_URL_INPUT
+          Manifest branch: $MANIFEST_BRANCH_INPUT
+          Treble branch: $TREBLE_BRANCH_INPUT
+          Image mode: source-built
+          DSU signing: Community GSI; not signed with a Samsung/Google OEM key
+          Target architecture: ARM64 A/B Treble GSI
+          Commit: $GITHUB_SHA
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          Raw image size: $RAW_IMAGE_SIZE ($RAW_IMAGE_BYTES bytes)
+
+          Checksums:
+          $(cat SHA256SUMS.txt)
+          EOF
           echo "RELEASE_TAG=src-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
 
       - name: "📤 Upload GSI Artifacts"
@@ -101,6 +129,7 @@ jobs:
             ${{ github.workspace }}/android_source/out_gsi/*.img.xz
             ${{ github.workspace }}/android_source/out_gsi/*.img.gz
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
+            ${{ github.workspace }}/android_source/out_gsi/build-info.txt
           retention-days: 7
 
       - name: "🏷️ Create GitHub Release"
@@ -131,6 +160,7 @@ jobs:
             ${{ github.workspace }}/android_source/out_gsi/*.img.xz
             ${{ github.workspace }}/android_source/out_gsi/*.img.gz
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
+            ${{ github.workspace }}/android_source/out_gsi/build-info.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -142,6 +172,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           TELEGRAM_GSI_NAME: ${{ inputs.variant }}
+          TELEGRAM_BUILD_TYPE: ${{ inputs.build_type }}
+          TELEGRAM_MANIFEST_BRANCH: ${{ inputs.manifest_branch }}
+          TELEGRAM_TREBLE_BRANCH: ${{ inputs.treble_branch }}
         run: |
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "Telegram secrets are not configured; skipping notification."
@@ -152,7 +185,13 @@ jobs:
             sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
           }
           TELEGRAM_GSI_NAME_ESCAPED=$(printf '%s' "$TELEGRAM_GSI_NAME" | html_escape)
-          TELEGRAM_TEXT=$(printf '<b>%s Source GSI</b>\n<a href="%s">Open GitHub Release</a>' "$TELEGRAM_GSI_NAME_ESCAPED" "$RELEASE_URL")
+          TELEGRAM_BUILD_TYPE_ESCAPED=$(printf '%s' "$TELEGRAM_BUILD_TYPE" | html_escape)
+          TELEGRAM_MANIFEST_BRANCH_ESCAPED=$(printf '%s' "$TELEGRAM_MANIFEST_BRANCH" | html_escape)
+          TELEGRAM_TREBLE_BRANCH_ESCAPED=$(printf '%s' "$TELEGRAM_TREBLE_BRANCH" | html_escape)
+          TELEGRAM_TEXT=$(printf '<b>%s Source GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nVariant: %s\nBuild type: %s\nManifest branch: %s\nTreble branch: %s\nDSU signing: Community GSI; installer/device must accept community GSI signatures\nCommit: %s\n</blockquote>' \
+            "$TELEGRAM_GSI_NAME_ESCAPED" "$RELEASE_URL" "$TELEGRAM_GSI_NAME_ESCAPED" \
+            "$TELEGRAM_BUILD_TYPE_ESCAPED" "$TELEGRAM_MANIFEST_BRANCH_ESCAPED" \
+            "$TELEGRAM_TREBLE_BRANCH_ESCAPED" "$GITHUB_SHA")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
