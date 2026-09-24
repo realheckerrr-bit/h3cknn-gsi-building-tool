@@ -95,8 +95,17 @@ PY
 lz4 -f -B6 --content-size "$TEST_DIR/ap/super.img" "$TEST_DIR/ap/super.img.lz4" >/dev/null
 lz4 -f -B6 --content-size "$TEST_DIR/ap/vbmeta.img" "$TEST_DIR/ap/vbmeta.img.lz4" >/dev/null
 tar -cf "$TEST_DIR/ap.tar" -C "$TEST_DIR/ap" super.img.lz4 vbmeta.img.lz4
+python3 - "$TEST_DIR/boot.img" <<'PY'
+import pathlib
+import sys
+
+data = bytearray(4096)
+data[:8] = b"ANDROID!"
+pathlib.Path(sys.argv[1]).write_bytes(data)
+PY
 mkdir -p "$TEST_DIR/output-ap"
 SAMSUNG_DEVICE_MODEL=SM-TEST \
+SAMSUNG_BOOT_INPUT="$TEST_DIR/boot.img" \
   bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
     "$TEST_DIR/ap.tar" \
     "$TEST_DIR/gsi.img" \
@@ -106,8 +115,11 @@ SAMSUNG_DEVICE_MODEL=SM-TEST \
 [ -s "$TEST_DIR/output-ap/smoke-ap-odin.tar" ]
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'super.img.lz4' >/dev/null
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta.img.lz4' >/dev/null
+tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'boot.img.lz4' >/dev/null
 tar -xf "$TEST_DIR/output-ap/smoke-ap-odin.tar" -C "$TEST_DIR/output-ap"
 lz4 -dc "$TEST_DIR/output-ap/vbmeta.img.lz4" > "$TEST_DIR/output-ap/vbmeta.img"
+lz4 -dc "$TEST_DIR/output-ap/boot.img.lz4" > "$TEST_DIR/output-ap/boot.img"
+test "$(od -An -tc -N8 "$TEST_DIR/output-ap/boot.img" | tr -d '[:space:]')" = ANDROID!
 python3 - "$TEST_DIR/output-ap/vbmeta.img" <<'PY'
 import pathlib
 import struct

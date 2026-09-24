@@ -29,6 +29,11 @@ on:
           - "img.xz"
           - "img.gz"
           - "img"
+      boot_url:
+        description: "Optional exact-device boot.img.lz4/boot.img or archive (for a GSI-compatible kernel)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -52,19 +57,28 @@ jobs:
           STOCK_URL_INPUT: ${{ inputs.stock_url }}
           GSI_URL_INPUT: ${{ inputs.gsi_url }}
           GSI_FORMAT_INPUT: ${{ inputs.gsi_format }}
+          BOOT_URL_INPUT: ${{ inputs.boot_url }}
         run: |
           mkdir -p workspace/samsung-inputs
           curl --fail --location --retry 3 --retry-delay 5 \
             "$STOCK_URL_INPUT" -o workspace/samsung-inputs/stock-input
           curl --fail --location --retry 3 --retry-delay 5 \
             "$GSI_URL_INPUT" -o "workspace/samsung-inputs/gsi.$GSI_FORMAT_INPUT"
+          if [ -n "$BOOT_URL_INPUT" ]; then
+            curl --fail --location --retry 3 --retry-delay 5 \
+              "$BOOT_URL_INPUT" -o workspace/samsung-inputs/boot-input
+          fi
 
       - name: Build and validate Samsung super package
         env:
           DEVICE_MODEL_INPUT: ${{ inputs.device_model }}
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          BOOT_INPUT_PATH: workspace/samsung-inputs/boot-input
         run: |
           chmod +x scripts/*.sh
+          if [ -f "$BOOT_INPUT_PATH" ]; then
+            export SAMSUNG_BOOT_INPUT="$BOOT_INPUT_PATH"
+          fi
           SAMSUNG_DEVICE_MODEL="$DEVICE_MODEL_INPUT" \
             bash scripts/build_samsung_super.sh \
               workspace/samsung-inputs/stock-input \
@@ -103,7 +117,8 @@ jobs:
             - **Stock source**: `${{ inputs.stock_url }}`
             - **GSI source**: `${{ inputs.gsi_url }}`
             - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains its matching `vbmeta.img.lz4`.
-            - **Preserved**: stock vendor/product/odm/system_ext and all boot, recovery, and kernel files
+            - **Optional boot**: an explicitly supplied exact-device `boot.img.lz4` is included when provided; do not use a foreign kernel.
+            - **Preserved**: stock vendor/product/odm/system_ext, recovery, and kernel files; boot is replaced only when the optional exact-device boot input is supplied.
 
             The Odin tar contains Samsung content-size LZ4 `super.img.lz4` plus the matching AP vbmeta
             with AVB disable flags. Use the exact matching Samsung firmware, recovery, multidisabler,

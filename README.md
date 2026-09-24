@@ -112,7 +112,10 @@ The release contains a `*-odin.tar` only when the AP includes
 `vbmeta.img.lz4`, plus a `*-super-only.tar` for the raw super image. Flash the
 Odin tar only on the exact same model and firmware family. Keep the matching
 BL/CP/CSC package available; a factory reset and the device-specific
-multidisabler/kernel procedure may still be required.
+multidisabler/kernel procedure may still be required. For Exynos 850 Android
+14+ installations that need a custom kernel, use the workflow's optional
+`boot_url` input with an exact-device `boot.img.lz4`; never use a boot image
+from another model or firmware binary.
 
 The resulting `.tar` remains device-specific. Follow the matching Samsung
 recovery, multidisabler, data-format, and kernel procedure. A package made

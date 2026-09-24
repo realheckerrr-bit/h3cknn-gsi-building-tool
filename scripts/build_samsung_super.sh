@@ -4,8 +4,10 @@
 #
 # This is deliberately opt-in and requires a matching stock super/AP image.
 # It never invents or modifies boot, vendor, odm, recovery, or kernel.  When an
-# AP archive is supplied, it also creates a separate Odin package containing
+# AP archive is supplied, it creates a separate Odin package containing
 # Samsung-format LZ4 super plus the AP's matching vbmeta with AVB disable bits.
+# An explicitly supplied exact-device boot image can be added as an optional
+# package member for devices that need a custom GSI-compatible kernel.
 # ============================================================================
 
 set -Eeuo pipefail
@@ -268,7 +270,8 @@ SUPER_OUT="$OUTPUT_DIR/super.img"
 SUPER_LZ4_OUT="$OUTPUT_DIR/super.img.lz4"
 RAW_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-super-only.tar"
 ODIN_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-odin.tar"
-rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT"
+BOOT_LZ4_OUT="$OUTPUT_DIR/boot.img.lz4"
+rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT" "$BOOT_LZ4_OUT"
 
 echo "==> [SAMSUNG-SUPER] Rebuilding stock logical-partition metadata..."
 lpmake "${LPM_ARGS[@]}" --sparse --output "$SUPER_OUT"
@@ -300,6 +303,9 @@ fi
 tar -cf "$RAW_TAR_OUT" -C "$OUTPUT_DIR" "$(basename "$SUPER_OUT")"
 
 ODIN_STATUS="Not created: supply the exact matching AP.tar.md5 so vbmeta can be preserved and patched."
+BOOT_STATUS="Not included: no explicit exact-device boot image was supplied."
+VBMETA_READY=0
+ODIN_MEMBERS=("$(basename "$SUPER_LZ4_OUT")")
 if [ -n "$AP_VBMETA_SOURCE" ] && [ -f "$AP_VBMETA_SOURCE" ]; then
   VBMETA_IMAGE="$TEMP_DIR/vbmeta.img"
   VBMETA_LZ4_OUT="$OUTPUT_DIR/vbmeta.img.lz4"
@@ -327,11 +333,67 @@ PY
     echo "[-] ERROR: lz4 did not create a Samsung vbmeta frame (magic: $VBMETA_LZ4_MAGIC)." >&2
     exit 1
   fi
-  tar -H ustar -cf "$ODIN_TAR_OUT" -C "$OUTPUT_DIR" \
-    "$(basename "$SUPER_LZ4_OUT")" "$(basename "$VBMETA_LZ4_OUT")"
-  ODIN_STATUS="Created: $(basename "$ODIN_TAR_OUT") (super.img.lz4 + matching vbmeta.img.lz4)"
+  ODIN_MEMBERS+=("$(basename "$VBMETA_LZ4_OUT")")
+  VBMETA_READY=1
 else
   echo "==> [SAMSUNG-SUPER] No vbmeta.img.lz4 found; Odin tar will not be created."
+fi
+
+# Some Exynos 850 Android 14 installations need a device-specific custom
+# kernel. Only include one when the caller explicitly provides it; using a
+# foreign boot image is more dangerous than omitting it. Accept a raw
+# boot.img, Samsung boot.img.lz4, or an archive containing either.
+BOOT_INPUT="${SAMSUNG_BOOT_INPUT:-}"
+if [ -n "$BOOT_INPUT" ]; then
+  if [ ! -f "$BOOT_INPUT" ]; then
+    echo "[-] ERROR: Explicit Samsung boot input was not found: $BOOT_INPUT" >&2
+    exit 1
+  fi
+  BOOT_SOURCE="$BOOT_INPUT"
+  BOOT_TYPE=$(file -b "$BOOT_SOURCE" | tr '[:upper:]' '[:lower:]')
+  if printf '%s' "$BOOT_TYPE" | grep -Eiq 'tar archive|zip archive|7-zip|7z'; then
+    BOOT_DIR="$TEMP_DIR/boot-input"
+    mkdir -p "$BOOT_DIR"
+    7z x -y "$BOOT_SOURCE" -o"$BOOT_DIR" >/dev/null
+    BOOT_SOURCE=$(find "$BOOT_DIR" -type f \( -name 'boot.img.lz4' -o -name 'boot.img' \) -print -quit)
+    if [ -z "$BOOT_SOURCE" ]; then
+      echo "[-] ERROR: Boot archive does not contain boot.img or boot.img.lz4." >&2
+      exit 1
+    fi
+    BOOT_TYPE=$(file -b "$BOOT_SOURCE" | tr '[:upper:]' '[:lower:]')
+  fi
+
+  BOOT_RAW="$TEMP_DIR/boot.img"
+  BOOT_EXT="${BOOT_SOURCE##*.}"
+  BOOT_EXT=$(printf '%s' "$BOOT_EXT" | tr '[:upper:]' '[:lower:]')
+  if [ "$BOOT_EXT" = "lz4" ] || printf '%s' "$BOOT_TYPE" | grep -Eiq 'lz4 compressed'; then
+    lz4 -dc -- "$BOOT_SOURCE" > "$BOOT_RAW"
+  elif [ "$BOOT_EXT" = "xz" ] || printf '%s' "$BOOT_TYPE" | grep -Eiq 'xz compressed'; then
+    xz -dc -- "$BOOT_SOURCE" > "$BOOT_RAW"
+  elif [ "$BOOT_EXT" = "gz" ] || printf '%s' "$BOOT_TYPE" | grep -Eiq 'gzip compressed'; then
+    gzip -dc -- "$BOOT_SOURCE" > "$BOOT_RAW"
+  else
+    cp -- "$BOOT_SOURCE" "$BOOT_RAW"
+  fi
+  BOOT_MAGIC=$(od -An -tc -N8 "$BOOT_RAW" 2>/dev/null | tr -d '[:space:]')
+  if [ "$BOOT_MAGIC" != "ANDROID!" ]; then
+    echo "[-] ERROR: Explicit boot input is not an Android boot image (magic: $BOOT_MAGIC)." >&2
+    exit 1
+  fi
+  lz4 -f -B6 --content-size "$BOOT_RAW" "$BOOT_LZ4_OUT" >/dev/null
+  BOOT_LZ4_MAGIC=$(od -An -tx1 -N5 "$BOOT_LZ4_OUT" 2>/dev/null | tr -d '[:space:]')
+  if [ "$BOOT_LZ4_MAGIC" != "04224d186c" ]; then
+    echo "[-] ERROR: lz4 did not create a Samsung boot frame (magic: $BOOT_LZ4_MAGIC)." >&2
+    exit 1
+  fi
+  ODIN_MEMBERS+=("$(basename "$BOOT_LZ4_OUT")")
+  BOOT_STATUS="Included: $(basename "$BOOT_LZ4_OUT") from $(basename "$BOOT_INPUT")"
+fi
+
+if [ "$VBMETA_READY" = "1" ]; then
+  tar -H ustar -cf "$ODIN_TAR_OUT" -C "$OUTPUT_DIR" "${ODIN_MEMBERS[@]}"
+  ODIN_MEMBER_LIST=$(IFS=', '; echo "${ODIN_MEMBERS[*]}")
+  ODIN_STATUS="Created: $(basename "$ODIN_TAR_OUT") (${ODIN_MEMBER_LIST})"
 fi
 
 cat > "$OUTPUT_DIR/${OUTPUT_NAME}.build-info.txt" <<EOF
@@ -346,6 +408,7 @@ Replaced: system logical partition only
 Raw super tar: $(basename "$RAW_TAR_OUT")
 Samsung LZ4 image: $(basename "$SUPER_LZ4_OUT")
 Odin package: $ODIN_STATUS
+Boot image: $BOOT_STATUS
 AVB: matching AP vbmeta has flags 0x03 only when the Odin package was created
 Warning: use only with the exact matching Samsung model/AP/firmware. Factory reset and device-specific multidisabler/kernel steps may still be required.
 EOF
