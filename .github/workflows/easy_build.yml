@@ -184,7 +184,11 @@ jobs:
             exit 0
           fi
           RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/${RELEASE_TAG}"
-          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable>Build info is attached to the release.</blockquote>' "$OUTPUT_NAME_INPUT" "$RELEASE_URL")
+          html_escape() {
+            sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+          }
+          TELEGRAM_GSI_NAME=$(printf '%s' "$OUTPUT_NAME_INPUT" | html_escape)
+          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable>Build info is attached to the release.</blockquote>' "$TELEGRAM_GSI_NAME" "$RELEASE_URL")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
