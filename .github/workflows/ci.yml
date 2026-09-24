@@ -26,4 +26,5 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends \
             android-sdk-libsparse-utils e2fsprogs p7zip-full
+          bash scripts/install_lpmake.sh
           bash scripts/test_samsung_super.sh

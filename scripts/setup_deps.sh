@@ -52,6 +52,9 @@ sudo apt-get install -y -qq --no-install-recommends \
   zstd \
   android-sdk-libsparse-utils
 
+echo "==> [SETUP] Ensuring lpmake is available..."
+bash "$(dirname "$(realpath "$0")")/install_lpmake.sh"
+
 echo "==> [SETUP] Installing Python helper packages..."
 python3 -m pip install --break-system-packages --upgrade pip setuptools wheel 2>/dev/null \
   || python3 -m pip install --upgrade pip setuptools wheel
