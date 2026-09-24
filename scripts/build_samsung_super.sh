@@ -116,6 +116,22 @@ if [ ! -s "$GSI_IMAGE" ]; then
   exit 1
 fi
 
+# Do not create a boot-looking super image around an arbitrary download.
+# Samsung boot failures are much easier to diagnose when the replacement is
+# proven to contain a raw ext4 or EROFS filesystem before lpmake runs.
+GSI_EXT4_MAGIC=$(dd if="$GSI_IMAGE" bs=1 skip=1080 count=2 status=none 2>/dev/null \
+  | od -An -tx1 | tr -d '[:space:]')
+GSI_EROFS_MAGIC=$(dd if="$GSI_IMAGE" bs=1 skip=1024 count=4 status=none 2>/dev/null \
+  | od -An -tx1 | tr -d '[:space:]')
+GSI_FILE_TYPE=$(file -b "$GSI_IMAGE" | tr '[:upper:]' '[:lower:]')
+if [ "$GSI_EXT4_MAGIC" != "53ef" ] \
+  && [ "$GSI_EROFS_MAGIC" != "e2e1f5e0" ] \
+  && ! printf '%s' "$GSI_FILE_TYPE" | grep -Eq 'ext[234] filesystem|erofs'; then
+  echo "[-] ERROR: GSI input is not a raw ext4/EROFS filesystem image." >&2
+  echo "    Detected: $GSI_FILE_TYPE" >&2
+  exit 1
+fi
+
 PARTITION_DIR="$TEMP_DIR/partitions"
 mkdir -p "$PARTITION_DIR"
 if ! python3 "$TOOLS_DIR/lpunpack.py" "$STOCK_IMAGE" "$PARTITION_DIR" >/dev/null; then

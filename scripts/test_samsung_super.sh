@@ -63,4 +63,16 @@ SAMSUNG_DEVICE_MODEL=SM-TEST \
 [ -s "$TEST_DIR/output-sparse/super.img" ]
 [ -s "$TEST_DIR/output-sparse/smoke-sparse.tar" ]
 
+printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
+if SAMSUNG_DEVICE_MODEL=SM-TEST \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/stock-super.img" \
+    "$TEST_DIR/invalid.img" \
+    should-fail \
+    "$TEST_DIR/work-invalid" \
+    "$TEST_DIR/output-invalid"; then
+  echo "[-] Invalid GSI input was incorrectly accepted." >&2
+  exit 1
+fi
+
 echo "==> Samsung stock-super packaging test passed."
