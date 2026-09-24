@@ -149,9 +149,9 @@ print("META\t{}\t{}".format(
     int(data.get("metadata_max_size", 65536)),
     int(data.get("metadata_slot_count", 2)),
 ))
-for group in data.get("group_table", []):
+for group in data.get("group_table", data.get("groups", [])):
     print("GROUP\t{}\t{}".format(group["name"], int(group.get("maximum_size", 0))))
-for partition in data.get("partition_table", []):
+for partition in data.get("partition_table", data.get("partitions", [])):
     print("PART\t{}\t{}".format(partition["name"], partition["group_name"]))
 PY
 then
