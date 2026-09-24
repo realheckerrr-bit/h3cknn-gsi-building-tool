@@ -32,7 +32,6 @@ lpmake \
   --image system="$TEST_DIR/stock-system.img" \
   --partition vendor:readonly:8388608:main \
   --image vendor="$TEST_DIR/vendor.img" \
-  --sparse \
   --output "$TEST_DIR/stock-super.img"
 
 mkdir -p "$TEST_DIR/output"
