@@ -6,6 +6,7 @@ import json
 import re
 import struct
 import sys
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
@@ -536,6 +537,7 @@ class Metadata:
             }
         except Exception as error:
             print(f"Metadata info conversion failed: {error}", file=sys.stderr)
+            traceback.print_exc()
         finally:
             return result
 
