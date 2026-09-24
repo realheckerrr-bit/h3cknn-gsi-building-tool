@@ -185,7 +185,13 @@ with open(sys.argv[1], encoding="utf-8") as handle:
     data = json.load(handle)
 
 device = data.get("block_devices", [{}])[0]
-print("DEVICE\t{}\t{}".format(device.get("name", "super"), int(device.get("size", 0))))
+print("DEVICE\t{}\t{}\t{}\t{}\t{}".format(
+    device.get("name", "super"),
+    int(device.get("size", 0)),
+    int(device.get("alignment", 1024 * 1024)),
+    int(device.get("alignment_offset", 0)),
+    int(device.get("block_size", 4096)),
+))
 print("META\t{}\t{}".format(
     int(data.get("metadata_max_size", 65536)),
     int(data.get("metadata_slot_count", 2)),
@@ -204,13 +210,22 @@ fi
 declare -A GROUP_MAX GROUP_BYTES GROUP_PARTITION_SEEN
 DEVICE_NAME=""
 DEVICE_SIZE=0
+ALIGNMENT=1048576
+ALIGNMENT_OFFSET=0
+BLOCK_SIZE=4096
 METADATA_SIZE=65536
 METADATA_SLOTS=2
 PARTITIONS=()
 
-while IFS=$'\t' read -r kind first second; do
+while IFS=$'\t' read -r kind first second third fourth fifth; do
   case "$kind" in
-    DEVICE) DEVICE_NAME="$first"; DEVICE_SIZE="$second" ;;
+    DEVICE)
+      DEVICE_NAME="$first"
+      DEVICE_SIZE="$second"
+      ALIGNMENT="${third:-1048576}"
+      ALIGNMENT_OFFSET="${fourth:-0}"
+      BLOCK_SIZE="${fifth:-4096}"
+      ;;
     META) METADATA_SIZE="$first"; METADATA_SLOTS="$second" ;;
     GROUP) GROUP_MAX["$first"]="$second" ;;
     PART) PARTITIONS+=("$first"$'\t'"$second") ;;
@@ -229,6 +244,9 @@ LPM_ARGS=(
   --super-name super
   --metadata-slots "$METADATA_SLOTS"
   --device "${DEVICE_NAME}:${DEVICE_SIZE}"
+  --alignment "$ALIGNMENT"
+  --alignment-offset "$ALIGNMENT_OFFSET"
+  --block-size "$BLOCK_SIZE"
 )
 
 # Add every original group. A zero maximum is legal in some metadata versions;
