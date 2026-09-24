@@ -128,6 +128,14 @@ device-specific recovery, or the kernel. Keep the stock vendor/firmware for
 the exact model and use the matching recovery/kernel instructions before
 blaming the downloaded image.
 
+DSU is a separate path from TWRP. It needs a working Android installation,
+dynamic partitions, an unlocked bootloader, and a device/installer mode that
+accepts the GSI signature ([Android DSU requirements](https://developer.android.com/topic/dsu)). DSU Sideloader can provide extra ADB, Shizuku, root,
+or system modes, but the builder cannot create Samsung's OEM signing key. If
+DSU reports verification or installation failure, use its diagnostic log and
+try the TWRP System Image path instead; repacking the GSI will not solve a
+signature, vendor, kernel, or AVB failure.
+
 ### Fastboot-based devices
 
 1. Extract the downloaded image:
