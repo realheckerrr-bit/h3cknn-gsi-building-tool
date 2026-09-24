@@ -150,7 +150,7 @@ jobs:
           TELEGRAM_FILESYSTEM=$(printf '%s' "$INPUT_FS_TYPE" | html_escape)
           TELEGRAM_IMAGE_MODE=$(printf '%s' "$IMAGE_MODE" | html_escape)
           TELEGRAM_COMMIT=$(printf '%s' "$GITHUB_SHA" | html_escape)
-          RELEASE_TAG="v$(date +%Y.%m.%d-%H%M%S)"
+          RELEASE_TAG="v$(date +%Y.%m.%d-%H%M%S)-${GITHUB_RUN_ID}"
           RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/${RELEASE_TAG}"
 
           cat > build-info.txt <<EOF

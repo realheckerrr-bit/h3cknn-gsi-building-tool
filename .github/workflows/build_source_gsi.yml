@@ -119,7 +119,7 @@ jobs:
           Checksums:
           $(cat SHA256SUMS.txt)
           EOF
-          echo "RELEASE_TAG=src-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
+          echo "RELEASE_TAG=src-v$(date +%Y.%m.%d-%H%M%S)-${GITHUB_RUN_ID}" >> $GITHUB_ENV
 
       - name: "📤 Upload GSI Artifacts"
         uses: actions/upload-artifact@v4
@@ -148,14 +148,12 @@ jobs:
             - **DSU signing**: Community GSI; not signed with a Samsung/Google OEM key
             - **Built on**: Run ${{ github.run_id }}
 
-            ### ⚡ Flashing Instructions:
-            ```bash
-            unxz ${{ github.event.inputs.variant }}-*.img.xz
-            fastboot reboot fastboot
-            fastboot flash system ${{ github.event.inputs.variant }}-*.img
-            fastboot -w
-            fastboot reboot
-            ```
+            ### ⚡ Flashing
+            Use the generated `.img.xz` or `.img.gz` with the documented method
+            for the target device. Samsung Galaxy M12 users must use the exact
+            stock AP/super/vbmeta workflow or matching TWRP/kernel procedure;
+            these images are not universal Odin packages and must not be flashed
+            with generic fastboot commands.
           files: |
             ${{ github.workspace }}/android_source/out_gsi/*.img.xz
             ${{ github.workspace }}/android_source/out_gsi/*.img.gz
