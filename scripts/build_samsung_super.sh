@@ -74,7 +74,7 @@ fi
 STOCK_IMAGE="$TEMP_DIR/stock.super.img"
 STOCK_EXT="${STOCK_SOURCE##*.}"
 STOCK_EXT=$(printf '%s' "$STOCK_EXT" | tr '[:upper:]' '[:lower:]')
-if [ "$STOCK_EXT" = "lz4" ]; then
+if [ "$STOCK_EXT" = "lz4" ] || printf '%s' "$STOCK_TYPE" | grep -Eiq 'lz4 compressed'; then
   lz4 -dc -- "$STOCK_SOURCE" > "$STOCK_IMAGE"
 else
   cp -- "$STOCK_SOURCE" "$STOCK_IMAGE"

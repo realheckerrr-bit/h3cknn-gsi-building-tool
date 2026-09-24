@@ -7,7 +7,7 @@ ROOT_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
 TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/samsung-super-test.XXXXXX")
 trap 'rm -rf -- "$TEST_DIR"' EXIT
 
-for command_name in lpmake mke2fs simg2img img2simg 7z; do
+for command_name in lpmake mke2fs simg2img img2simg lz4 7z; do
   command -v "$command_name" >/dev/null 2>&1 || {
     echo "[-] Missing test dependency: $command_name" >&2
     exit 1
@@ -62,6 +62,19 @@ SAMSUNG_DEVICE_MODEL=SM-TEST \
 
 [ -s "$TEST_DIR/output-sparse/super.img" ]
 [ -s "$TEST_DIR/output-sparse/smoke-sparse.tar" ]
+
+lz4 -f "$TEST_DIR/stock-super.img" "$TEST_DIR/stock-input"
+mkdir -p "$TEST_DIR/output-lz4"
+SAMSUNG_DEVICE_MODEL=SM-TEST \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/stock-input" \
+    "$TEST_DIR/gsi.img" \
+    smoke-lz4 \
+    "$TEST_DIR/work-lz4" \
+    "$TEST_DIR/output-lz4"
+
+[ -s "$TEST_DIR/output-lz4/super.img" ]
+[ -s "$TEST_DIR/output-lz4/smoke-lz4.tar" ]
 
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \
