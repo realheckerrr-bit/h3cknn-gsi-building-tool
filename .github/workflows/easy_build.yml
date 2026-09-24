@@ -39,12 +39,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: "📊 Build Info"
+        env:
+          ROM_URL_INPUT: ${{ inputs.rom_url }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          GSI_TYPE_INPUT: ${{ inputs.gsi_type }}
         run: |
           echo "=================================================="
           echo "  ⚡ h3cknn Easy GSI Builder"
-          echo "  ROM:    ${{ github.event.inputs.rom_url }}"
-          echo "  Name:   ${{ github.event.inputs.output_name }}"
-          echo "  Format: ${{ github.event.inputs.gsi_type }}"
+          echo "  ROM:    $ROM_URL_INPUT"
+          echo "  Name:   $OUTPUT_NAME_INPUT"
+          echo "  Format: $GSI_TYPE_INPUT"
           echo "=================================================="
 
       - name: "🧹 Free Disk Space"
@@ -102,7 +106,7 @@ jobs:
           Image mode: $IMAGE_MODE
           Requested filesystem: ${FS_TYPE}
           Target architecture: ARM64 A/B Treble GSI
-          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           Raw image size: ${RAW_IMAGE_BYTES} bytes
           EOF
           echo "RELEASE_TAG=easy-v$(date +%Y.%m.%d-%H%M%S)" >> $GITHUB_ENV
@@ -178,7 +182,7 @@ jobs:
             echo "Telegram secrets are not configured; skipping notification."
             exit 0
           fi
-          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/${RELEASE_TAG}"
           TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable>Build info is attached to the release.</blockquote>' "$OUTPUT_NAME_INPUT" "$RELEASE_URL")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \

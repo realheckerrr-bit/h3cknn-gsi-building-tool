@@ -61,20 +61,27 @@ jobs:
           sudo chmod a+rx /usr/local/bin/repo
 
       - name: "🔄 Sync Source Tree & Apply Treble Patches"
+        env:
+          MANIFEST_URL_INPUT: ${{ inputs.manifest_url }}
+          MANIFEST_BRANCH_INPUT: ${{ inputs.manifest_branch }}
+          TREBLE_BRANCH_INPUT: ${{ inputs.treble_branch }}
         run: |
           chmod +x source/*.sh
           bash source/sync_and_patch.sh \
-            "${{ github.event.inputs.manifest_url }}" \
-            "${{ github.event.inputs.manifest_branch }}" \
-            "${{ github.event.inputs.treble_branch }}" \
+            "$MANIFEST_URL_INPUT" \
+            "$MANIFEST_BRANCH_INPUT" \
+            "$TREBLE_BRANCH_INPUT" \
             "$GITHUB_WORKSPACE/android_source"
 
       - name: "🏗️ Compile System Image"
+        env:
+          VARIANT_INPUT: ${{ inputs.variant }}
+          BUILD_TYPE_INPUT: ${{ inputs.build_type }}
         run: |
           bash source/build_source.sh \
             "$GITHUB_WORKSPACE/android_source" \
-            "${{ github.event.inputs.variant }}" \
-            "${{ github.event.inputs.build_type }}"
+            "$VARIANT_INPUT" \
+            "$BUILD_TYPE_INPUT"
 
       - name: "🔑 Generate Checksums"
         run: |
@@ -136,7 +143,7 @@ jobs:
             echo "Telegram secrets are not configured; skipping notification."
             exit 0
           fi
-          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/${RELEASE_TAG}"
           TELEGRAM_TEXT=$(printf '<b>%s Source GSI</b>\n<a href="%s">Open GitHub Release</a>' "$TELEGRAM_GSI_NAME" "$RELEASE_URL")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \

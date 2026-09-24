@@ -28,7 +28,8 @@ cp "$SCRIPT_DIR/manifests/treble_manifest.xml" .repo/local_manifests/
 
 # Update revision if branch parameter is specified
 if [ -n "$TREBLE_BRANCH" ]; then
-  sed -i "s/revision=\"android-14.0\"/revision=\"$TREBLE_BRANCH\"/g" .repo/local_manifests/treble_manifest.xml || true
+  TREBLE_BRANCH_ESCAPED=$(printf '%s' "$TREBLE_BRANCH" | sed 's/[&|\\]/\\&/g')
+  sed -i "s|revision=\"android-14.0\"|revision=\"$TREBLE_BRANCH_ESCAPED\"|g" .repo/local_manifests/treble_manifest.xml
 fi
 
 echo "==> [SOURCE-SYNC] Syncing repositories (shallow sync)..."
@@ -37,13 +38,14 @@ repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune --force-sync 
 echo "==> [SOURCE-SYNC] Applying Project Treble patches..."
 if [ -f "device/phh/treble/patches.sh" ]; then
   echo "  -> Executing TrebleDroid patch set..."
-  bash device/phh/treble/patches.sh . || true
+  bash device/phh/treble/patches.sh .
 elif [ -d "device/phh/treble/patches" ]; then
   echo "  -> Applying patch series..."
-  for patch_file in $(find device/phh/treble/patches -name "*.patch" | sort); do
+  while IFS= read -r -d '' patch_file; do
     echo "    Applying: $patch_file"
-    git apply --check "$patch_file" 2>/dev/null && git apply "$patch_file" || true
-  done
+    git apply --check "$patch_file"
+    git apply "$patch_file"
+  done < <(find device/phh/treble/patches -type f -name "*.patch" -print0 | sort -z)
 fi
 
 echo "==> [SOURCE-SYNC] Source tree prepared and patched successfully."
