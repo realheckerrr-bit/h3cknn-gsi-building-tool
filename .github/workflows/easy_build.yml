@@ -155,9 +155,9 @@ jobs:
             - **Samsung Galaxy M12:** do not use fastboot commands. Use the Samsung
               stock-super workflow with the exact matching AP firmware, or follow
               the exact TWRP/kernel/multidisabler procedure for your model.
-            - **DSU:** use the `.img.gz` asset only from a working Android system
-              on a device that supports DSU, with an unlocked bootloader and enough
-              free storage. A community GSI is not an OEM-signed image.
+             - **DSU:** the `.img.gz` asset is in DSU format, but installation still
+               requires a working Android system, an unlocked bootloader, enough free
+               storage, and an installer/device that accepts community non-OEM-signed images.
             - **Other devices:** follow that device's documented GSI installation
               method; the `.img.xz` asset is the system image, not a universal Odin package.
           files: |

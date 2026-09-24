@@ -85,7 +85,7 @@ git push -u origin main
    - **Output GSI Name**: e.g., `Pixel_14_ARM64_GSI`
    - **OEM Profile**: Select `generic`, `pixel`, `hyperos`, `oneui`, etc.
    - **Output Filesystem**: `ext4` or `erofs`.
-5. Click **Run workflow**. Once finished, the compressed GSI (`.img.xz`) and DSU-compatible GZIP image (`.img.gz`) will be published in the **Releases** tab. For DSU Sideloader, select the `.img.gz` file.
+5. Click **Run workflow**. Once finished, the compressed GSI (`.img.xz`) and DSU-format GZIP image (`.img.gz`) will be published in the **Releases** tab. For DSU Sideloader, select the `.img.gz` file; the device/installer must accept community, non-OEM-signed GSIs.
 
 ### 3. Compiling a GSI from Source
 1. In the **Actions** tab, select **"Build Source-Based Treble GSI"**.
