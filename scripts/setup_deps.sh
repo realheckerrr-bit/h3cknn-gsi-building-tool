@@ -51,8 +51,7 @@ sudo apt-get install -y -qq --no-install-recommends \
   zlib1g-dev \
   zstd \
   android-sdk-libsparse-utils \
-  android-libbase-dev \
-  patchelf
+  android-libbase-dev
 
 echo "==> [SETUP] Ensuring lpmake is available..."
 bash "$(dirname "$(realpath "$0")")/install_lpmake.sh"

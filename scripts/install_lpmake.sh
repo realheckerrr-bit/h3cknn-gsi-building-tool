@@ -8,11 +8,6 @@ if command -v lpmake >/dev/null 2>&1 && lpmake --help >/dev/null 2>&1; then
   exit 0
 fi
 
-if ! command -v patchelf >/dev/null 2>&1; then
-  echo "[-] ERROR: patchelf is required to make the AOSP lpmake binary find Ubuntu's Android libraries." >&2
-  exit 1
-fi
-
 # Ubuntu's android-sdk-libsparse-utils package contains simg2img, but not
 # lpmake. This is a pinned AOSP prebuilt; verify it before installing it.
 LPMake_URL="${LPMake_URL:-https://android.googlesource.com/kernel/prebuilts/build-tools/+/refs/heads/androidx-draganddrop-release/linux-x86/bin/lpmake?format=TEXT}"
@@ -41,6 +36,6 @@ fi
 AOSP_LIB_DIR="/usr/local/lib/h3cknn-gsi/aosp-lib64"
 sudo install -d -m 0755 "$AOSP_LIB_DIR"
 sudo install -m 0755 "$TEMP_DIR/lib64/"*.so "$AOSP_LIB_DIR/"
-patchelf --set-rpath "$AOSP_LIB_DIR:$ANDROID_LIB_DIR" "$TEMP_FILE"
-sudo install -m 0755 "$TEMP_FILE" /usr/local/bin/lpmake
+sudo install -m 0755 "$TEMP_FILE" "$AOSP_LIB_DIR/lpmake.bin"
+sudo install -m 0755 "$(dirname "$(realpath "$0")")/lpmake_wrapper.sh" /usr/local/bin/lpmake
 echo "  [+] lpmake installed at /usr/local/bin/lpmake"
