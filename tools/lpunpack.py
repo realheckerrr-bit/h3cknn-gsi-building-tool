@@ -534,8 +534,8 @@ class Metadata:
                 ],
                 "partition_layout": self._get_partition_layout()
             }
-        except Exception:
-            pass
+        except Exception as error:
+            print(f"Metadata info conversion failed: {error}", file=sys.stderr)
         finally:
             return result
 
