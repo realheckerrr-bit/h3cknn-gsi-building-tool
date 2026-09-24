@@ -84,9 +84,12 @@ done
 IS_EXISTING_GSI=0
 if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ] && [ -f "$BUILD_PROP" ]; then
   SOURCE_BASENAME=$(basename "$SOURCE_INPUT" | tr '[:upper:]' '[:lower:]')
-  if grep -Eq '^ro\.treble\.enabled=true$' "$BUILD_PROP" \
-    && (grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP" \
-      || printf '%s' "$SOURCE_BASENAME" | grep -Eiq '(^|[-_.])(gsi|treble|arm64_[ab][a-z][a-z]?n)([-_.]|$)'); then
+  # Some community GSIs do not carry ro.treble.enabled in the extracted
+  # build.prop even though their filename/variant is unambiguous.  Require a
+  # direct image input plus either a generic device marker or a recognized GSI
+  # variant marker; do not rely on one property alone.
+  if grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP" \
+    || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" | grep -Eiq '(^|[-_/?.])(gsi|treble|arm64_[ab][a-z][a-z]?n)([-_.?/]|$)'; then
     IS_EXISTING_GSI=1
   fi
 fi
