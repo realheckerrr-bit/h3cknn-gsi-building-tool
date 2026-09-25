@@ -32,6 +32,11 @@ on:
         options:
           - "ext4"
           - "erofs"
+      target_model:
+        description: "Optional target model for compatibility warnings (example: SM-M127F)"
+        required: false
+        default: "generic"
+        type: string
 
 jobs:
   port_gsi:
@@ -65,6 +70,7 @@ jobs:
           INPUT_OUTPUT_NAME: ${{ inputs.output_name }}
           INPUT_ROM_TYPE: ${{ inputs.rom_type }}
           INPUT_FS_TYPE: ${{ inputs.fs_type }}
+          INPUT_TARGET_MODEL: ${{ inputs.target_model }}
         run: |
           chmod +x scripts/*.sh
           bash scripts/port_rom.sh \
@@ -80,6 +86,7 @@ jobs:
           INPUT_OUTPUT_NAME: ${{ inputs.output_name }}
           INPUT_ROM_TYPE: ${{ inputs.rom_type }}
           INPUT_FS_TYPE: ${{ inputs.fs_type }}
+          INPUT_TARGET_MODEL: ${{ inputs.target_model }}
         run: |
           bash scripts/validate_gsi_output.sh workspace/output/*.img.xz workspace/output/*.img.gz
           cd workspace/output
@@ -103,6 +110,11 @@ jobs:
           if [ -z "$BUILD_PROP" ]; then
             BUILD_PROP=$(find ../system_root -maxdepth 4 -type f -name build.prop -print -quit)
           fi
+
+          bash ../../scripts/check_gsi_compatibility.sh \
+            "$BUILD_PROP" \
+            "$INPUT_TARGET_MODEL" \
+            compatibility-report.txt
 
           prop() {
             local key value
@@ -164,6 +176,9 @@ jobs:
           Image mode: $IMAGE_MODE
           DSU signing: Community GSI; not signed with a Samsung/Google OEM key
           Target architecture: ARM64 A/B Treble GSI
+          Target model: $INPUT_TARGET_MODEL
+          Compatibility preflight:
+          $(cat compatibility-report.txt)
           Commit: $GITHUB_SHA
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -181,6 +196,7 @@ jobs:
           - **Image mode**: $IMAGE_MODE
           - **DSU signing**: Community GSI; not signed with a Samsung/Google OEM key
           - **Target architecture**: ARM64 A/B (Project Treble)
+          - **Target model**: $INPUT_TARGET_MODEL
           - **Workflow run**: [$GITHUB_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
           - **Commit**: $GITHUB_SHA
 
@@ -197,6 +213,12 @@ jobs:
           - **Build ID**: $(prop ro.build.id)
           - **Security patch**: $(prop ro.build.version.security_patch)
           - **Raw image size**: $RAW_IMAGE_SIZE ($RAW_IMAGE_BYTES bytes)
+
+          ### Compatibility preflight
+
+          ```text
+          $(cat compatibility-report.txt)
+          ```
 
           ### Flashing
 
@@ -223,6 +245,7 @@ jobs:
           OEM profile: ${TELEGRAM_OEM_PROFILE}
           Filesystem: ${TELEGRAM_FILESYSTEM}
           Image mode: ${TELEGRAM_IMAGE_MODE}
+          Target model: $(printf '%s' "$INPUT_TARGET_MODEL" | html_escape)
           DSU signing: Community GSI; installer/device must accept community GSI signatures
           Commit: ${TELEGRAM_COMMIT}
           </blockquote>
@@ -239,6 +262,7 @@ jobs:
             workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
+            workspace/output/compatibility-report.txt
           retention-days: 7
 
       - name: "🏷️ Create GitHub Release"
@@ -255,6 +279,7 @@ jobs:
             workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
+            workspace/output/compatibility-report.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

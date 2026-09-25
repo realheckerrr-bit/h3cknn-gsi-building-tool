@@ -23,6 +23,7 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
   - Can inject a supplied **Treble hardware overlay** (`TREBLE_OVERLAY_URL`) for adaptive brightness, cutouts, and status bar padding; no overlay is fabricated when the URL is absent.
   - Can inject a supplied **TrebleApp APK** (`TREBLE_APP_URL`) for hardware toggles; this is an optional app, not a universal kernel driver.
   - Preserves device-specific vendor HALs, kernel modules, DTB, and boot ramdisk instead of pretending they are universal system files.
+  - Runs an ARM64/Treble/VNDK preflight before publishing and embeds the result in the release, Telegram notification, and `compatibility-report.txt`.
   - Detects direct community GSI inputs and preserves their original sparse/filesystem layout instead of unpacking and rebuilding them. Set `FORCE_REPACK_GSI=1` only when deliberately converting an OEM system image.
   - The OEM repack path is experimental; it cannot create a complete bootable Samsung ROM without the matching device vendor, boot image/kernel, vbmeta, and recovery setup.
   - Provides an opt-in Samsung stock-super workflow that replaces only `system` while preserving logical partitions from a matching stock super/AP image.
@@ -86,6 +87,7 @@ git push -u origin main
    - **Output GSI Name**: e.g., `Pixel_14_ARM64_GSI`
    - **OEM Profile**: Select `generic`, `pixel`, `hyperos`, `oneui`, etc.
    - **Output Filesystem**: `ext4` or `erofs`.
+   - **Target model**: Optional, for example `SM-M127F`; this adds M12-specific compatibility warnings and does not replace the exact matching boot/vendor/kernel package.
 5. Click **Run workflow**. Once finished, the compressed GSI (`.img.xz`) and DSU-format GZIP image (`.img.gz`) will be published in the **Releases** tab. For DSU Sideloader, select the `.img.gz` file; the device/installer must accept community, non-OEM-signed GSIs.
 
 ### 3. Compiling a GSI from Source

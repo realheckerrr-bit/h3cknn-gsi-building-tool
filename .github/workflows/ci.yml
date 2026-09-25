@@ -24,6 +24,9 @@ jobs:
       - name: "Safe Treble property patching"
         run: bash scripts/test_treble_patch.sh
 
+      - name: "GSI compatibility preflight"
+        run: bash scripts/test_gsi_compatibility.sh
+
       - name: "📦 Direct and extensionless GSI preservation"
         run: |
           sudo apt-get update -qq
