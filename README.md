@@ -23,7 +23,7 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
   - Can inject a supplied **Treble hardware overlay** (`TREBLE_OVERLAY_URL`) for adaptive brightness, cutouts, and status bar padding; no overlay is fabricated when the URL is absent.
   - Can inject a supplied **TrebleApp APK** (`TREBLE_APP_URL`) for hardware toggles; this is an optional app, not a universal kernel driver.
   - Preserves device-specific vendor HALs, kernel modules, DTB, and boot ramdisk instead of pretending they are universal system files.
-  - Runs an ARM64/Treble/VNDK preflight before publishing and embeds the result in the release, Telegram notification, and `compatibility-report.txt`.
+  - Runs an ABI/Treble/VNDK preflight before publishing and embeds the result in the release, Telegram notification, and `compatibility-report.txt`.
   - Detects direct community GSI inputs and preserves their original sparse/filesystem layout instead of unpacking and rebuilding them. Set `FORCE_REPACK_GSI=1` only when deliberately converting an OEM system image.
   - The OEM repack path is experimental; it cannot create a complete bootable Samsung ROM without the matching device vendor, boot image/kernel, vbmeta, and recovery setup.
   - Provides an opt-in Samsung stock-super workflow that replaces only `system` while preserving logical partitions from a matching stock super/AP image.
@@ -95,7 +95,7 @@ git push -u origin main
 2. Click **Run workflow**:
    - **Android ROM Manifest URL**: `https://github.com/LineageOS/android.git`
    - **Manifest Branch**: `lineage-21.0` (Android 14) or `lineage-20.0` (Android 13)
-   - **Variant**: `treble_arm64_bvN` (Vanilla) or `treble_arm64_bgN` (with GApps)
+   - **Variant**: any generated TrebleDroid target, such as `treble_arm64_bvN` (64-bit A/B vanilla), `treble_arm64_avN` (64-bit A-only vanilla), `treble_arm_bvN` (32-bit A/B), or `treble_a64_bvN` (32-bit userspace on binder64). Suffixes select partition mode, apps, and root mode.
    - **Build Type**: `userdebug`
 3. Click **Run workflow**.
 

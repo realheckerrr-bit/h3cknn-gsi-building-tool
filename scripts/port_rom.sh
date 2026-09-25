@@ -100,7 +100,7 @@ if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ]; then
     && { { [ -f "$BUILD_PROP" ] \
       && grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP"; } \
       || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" \
-        | grep -Eiq '(^|[-_/?.])(gsi|treble|(arm64|a64)_[ab][a-z][a-z]?n)([-_.?/]|$)'; }; then
+        | grep -Eiq '(^|[-_/?.])(gsi|treble|(arm64|arm|a64)[-_.][ab][a-z][a-z]?n)([-_.?/]|$)'; }; then
     IS_EXISTING_GSI=1
   fi
 fi

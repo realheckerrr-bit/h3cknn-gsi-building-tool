@@ -94,7 +94,7 @@ FILE_MAGIC=$(od -An -tx1 -N4 "$ROM_FILE" 2>/dev/null | tr -d '[:space:]' || true
 # ambiguous, fall through to the full extractor below.
 DIRECT_GSI_HINT=0
 if printf '%s\n%s' "$(basename "$ROM_FILE")" "$ROM_URL" \
-  | grep -Eiq '(^|[-_/?.])(gsi|treble|arm64|a64[-_.][ab][a-z][a-z]?n)([-_.?/]|$)'; then
+  | grep -Eiq '(^|[-_/?.])(gsi|treble|(arm64|arm|a64)[-_.][ab][a-z][a-z]?n)([-_.?/]|$)'; then
   DIRECT_GSI_HINT=1
 fi
 DIRECT_IMAGE_TYPE=$(file -b "$ROM_FILE" | tr '[:upper:]' '[:lower:]')

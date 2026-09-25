@@ -19,15 +19,10 @@ on:
         default: "android-14.0"
         type: string
       variant:
-        description: "📦 Treble Variant"
+        description: "TrebleDroid target: arm64/arm/a64, A-only/A-B, apps/root suffixes"
         required: true
         default: "treble_arm64_bvN"
-        type: choice
-        options:
-          - "treble_arm64_bvN"   # Vanilla (No GApps, No Root)
-          - "treble_arm64_bgN"   # With GApps (Google Apps)
-          - "treble_arm64_bvS"   # Vanilla + Root (Magisk-ready)
-          - "treble_arm64_bgS"   # GApps + Root
+        type: string
       build_type:
         description: "🛠️ Build Type"
         required: true
@@ -101,12 +96,19 @@ jobs:
           bash scripts/validate_gsi_output.sh \
             "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.xz \
             "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.gz
+          case "$VARIANT_INPUT" in
+            treble_arm64_*) ABI_PROFILE="arm64" ;;
+            treble_arm_*) ABI_PROFILE="arm" ;;
+            treble_a64_*) ABI_PROFILE="a64" ;;
+            *) echo "Unsupported ABI variant: $VARIANT_INPUT" >&2; exit 2 ;;
+          esac
           BUILD_PROP=$(find "$GITHUB_WORKSPACE/android_source/out/target/product" \
             -type f -name build.prop -print -quit 2>/dev/null || true)
           bash scripts/check_gsi_compatibility.sh \
             "$BUILD_PROP" \
             "$TARGET_MODEL_INPUT" \
-            "$GITHUB_WORKSPACE/android_source/out_gsi/compatibility-report.txt"
+            "$GITHUB_WORKSPACE/android_source/out_gsi/compatibility-report.txt" \
+            "$ABI_PROFILE"
           cd "$GITHUB_WORKSPACE/android_source/out_gsi"
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
           IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
@@ -122,7 +124,7 @@ jobs:
           Treble branch: $TREBLE_BRANCH_INPUT
           Image mode: source-built
           DSU signing: Community GSI; not signed with a Samsung/Google OEM key
-          Target architecture: ARM64 A/B Treble GSI
+          Target ABI profile: $ABI_PROFILE
           Target model: $TARGET_MODEL_INPUT
           Compatibility preflight:
           $(cat compatibility-report.txt)

@@ -13,6 +13,15 @@ set -Eeuo pipefail
 BUILD_PROP="${1:-}"
 TARGET_MODEL="${2:-generic}"
 REPORT_PATH="${3:-compatibility-report.txt}"
+EXPECTED_ARCH="${4:-arm64}"
+
+case "$EXPECTED_ARCH" in
+  arm64|arm|a64|auto) ;;
+  *)
+    echo "[-] ERROR: Expected ABI profile must be arm64, arm, a64, or auto (got: $EXPECTED_ARCH)." >&2
+    exit 2
+    ;;
+esac
 
 if [ -z "$BUILD_PROP" ] || [ ! -f "$BUILD_PROP" ]; then
   echo "[-] ERROR: build.prop was not found: ${BUILD_PROP:-<empty>}" >&2
@@ -59,6 +68,23 @@ STATUS="PASS"
 FAILURES=()
 WARNINGS=()
 
+ABI_TEXT=",${ABI_LIST:-},${ABI64_LIST:-},${ABI:-},"
+HAS_ARM64=0
+HAS_ARM32=0
+case "$ABI_TEXT" in
+  *,arm64-v8a,*|*,arm64,*) HAS_ARM64=1 ;;
+esac
+case "$ABI_TEXT" in
+  *,armeabi-v7a,*|*,armeabi,*) HAS_ARM32=1 ;;
+esac
+
+DETECTED_ARCH="unknown"
+if [ "$HAS_ARM64" = "1" ]; then
+  DETECTED_ARCH="arm64"
+elif [ "$HAS_ARM32" = "1" ]; then
+  DETECTED_ARCH="arm32"
+fi
+
 fail() {
   STATUS="FAIL"
   FAILURES+=("$1")
@@ -69,23 +95,14 @@ warn() {
   WARNINGS+=("$1")
 }
 
-if [ -n "$ABI_LIST" ]; then
-  case ",$ABI_LIST," in
-    *,arm64-v8a,*|*,arm64,*) ;;
-    *) fail "The GSI does not advertise an ARM64 ABI (abilist: $ABI_LIST)." ;;
-  esac
-elif [ -n "$ABI64_LIST" ]; then
-  case ",$ABI64_LIST," in
-    *,arm64-v8a,*|*,arm64,*) ;;
-    *) fail "The GSI does not advertise an ARM64 ABI (abilist64: $ABI64_LIST)." ;;
-  esac
-elif [ -n "$ABI" ]; then
-  case "$ABI" in
-    arm64-v8a|arm64) ;;
-    *) fail "The GSI advertises '$ABI', not an ARM64 ABI." ;;
-  esac
-else
-  warn "CPU ABI properties are missing; ARM64 compatibility could not be proven."
+if [ "$EXPECTED_ARCH" = "arm64" ] && [ "$HAS_ARM64" != "1" ]; then
+  fail "The GSI does not advertise an ARM64 ABI (detected: ${DETECTED_ARCH})."
+elif [ "$EXPECTED_ARCH" = "arm" ] && [ "$HAS_ARM32" != "1" ]; then
+  fail "The GSI does not advertise an ARM32 ABI (detected: ${DETECTED_ARCH})."
+elif [ "$EXPECTED_ARCH" = "a64" ] && [ "$HAS_ARM32" != "1" ]; then
+  fail "The GSI does not advertise the 32-bit ABI required by an a64/binder64 target (detected: ${DETECTED_ARCH})."
+elif [ "$EXPECTED_ARCH" = "auto" ] && [ "$HAS_ARM64" = "0" ] && [ "$HAS_ARM32" = "0" ]; then
+  warn "CPU ABI properties are missing or unsupported; architecture compatibility could not be proven."
 fi
 
 case "$TREBLE" in
@@ -126,6 +143,8 @@ warn "No universal kernel or hardware driver is embedded. The target supplies ve
   printf '%s\n' '==========================='
   printf 'Status: %s\n' "$STATUS"
   printf 'Target model: %s\n' "$TARGET_MODEL"
+  printf 'Requested ABI profile: %s\n' "$EXPECTED_ARCH"
+  printf 'Detected ABI profile: %s\n' "$DETECTED_ARCH"
   printf 'Source build.prop: %s\n' "$(basename "$BUILD_PROP")"
   printf 'GSI device marker: %s\n' "${DEVICE:-unknown}"
   printf 'GSI model marker: %s\n' "${MODEL:-unknown}"

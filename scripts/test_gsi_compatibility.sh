@@ -18,7 +18,7 @@ ro.product.device=generic
 EOF
 
 bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
-  "$TEST_DIR/arm64.prop" SM-M127F "$TEST_DIR/arm64-report.txt" >/dev/null
+  "$TEST_DIR/arm64.prop" SM-M127F "$TEST_DIR/arm64-report.txt" arm64 >/dev/null
 grep -Fx 'Status: WARN' "$TEST_DIR/arm64-report.txt" >/dev/null
 grep -F 'No universal kernel or hardware driver is embedded.' "$TEST_DIR/arm64-report.txt" >/dev/null
 grep -F 'If the target vendor requires VNDKLite, use a known VNDKLite GSI' \
@@ -34,7 +34,7 @@ ro.product.system.model=Galaxy M12 Test Model
 EOF
 
 bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
-  "$TEST_DIR/abilist64.prop" generic "$TEST_DIR/abilist64-report.txt" >/dev/null
+  "$TEST_DIR/abilist64.prop" generic "$TEST_DIR/abilist64-report.txt" auto >/dev/null
 grep -F 'CPU ABI: arm64-v8a' "$TEST_DIR/abilist64-report.txt" >/dev/null
 grep -F 'GSI model marker: Galaxy M12 Test Model' "$TEST_DIR/abilist64-report.txt" >/dev/null
 
@@ -45,10 +45,18 @@ ro.build.version.sdk=35
 EOF
 
 if bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
-  "$TEST_DIR/arm32.prop" generic "$TEST_DIR/arm32-report.txt" >/dev/null 2>&1; then
+  "$TEST_DIR/arm32.prop" generic "$TEST_DIR/arm32-report.txt" arm64 >/dev/null 2>&1; then
   echo "[-] 32-bit GSI incorrectly passed ARM64 preflight." >&2
   exit 1
 fi
-grep -F "not an ARM64 ABI" "$TEST_DIR/arm32-report.txt" >/dev/null
+grep -F "does not advertise an ARM64 ABI" "$TEST_DIR/arm32-report.txt" >/dev/null
+
+bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
+  "$TEST_DIR/arm32.prop" generic "$TEST_DIR/arm32-arm-report.txt" arm >/dev/null
+grep -F 'Detected ABI profile: arm32' "$TEST_DIR/arm32-arm-report.txt" >/dev/null
+
+bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
+  "$TEST_DIR/arm32.prop" generic "$TEST_DIR/arm32-a64-report.txt" a64 >/dev/null
+grep -F 'Requested ABI profile: a64' "$TEST_DIR/arm32-a64-report.txt" >/dev/null
 
 echo "==> GSI compatibility preflight test passed."

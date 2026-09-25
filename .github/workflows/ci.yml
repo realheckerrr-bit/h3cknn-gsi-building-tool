@@ -27,6 +27,9 @@ jobs:
       - name: "GSI compatibility preflight"
         run: bash scripts/test_gsi_compatibility.sh
 
+      - name: "Treble source variant matrix"
+        run: bash scripts/test_source_variants.sh
+
       - name: "Direct GSI property fast path"
         run: |
           sudo apt-get update -qq

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # build_source.sh - Compile Treble GSI from Android Source Tree
-# Target: treble_arm64_bvN (A/B, Vanilla, Non-root) or treble_arm64_bgN (GApps)
+# Target: any generated TrebleDroid target (arm64/arm/a64, A-only/A-B,
+# vanilla/GApps/FOSS/Go, non-root/root).
 # ==============================================================================
 
 set -eo pipefail
@@ -11,18 +12,18 @@ TARGET_VARIANT="${2:-treble_arm64_bvN}"
 BUILD_TYPE="${3:-userdebug}"
 OUT_DIR="$WORK_DIR/out_gsi"
 
-# Keep the source workflow on the variants that TrebleDroid actually exposes.
-# A typo here otherwise reaches `lunch`, fails much later, and can leave a
-# misleading partial image in out_gsi.  Device-specific kernels and vendor
-# drivers are intentionally not part of this generic system-image build.
-case "$TARGET_VARIANT" in
-  treble_arm64_bvN|treble_arm64_bgN|treble_arm64_bvS|treble_arm64_bgS) ;;
-  *)
-    echo "[-] ERROR: Unsupported Treble variant: $TARGET_VARIANT" >&2
-    echo "    Supported variants: treble_arm64_bvN, treble_arm64_bgN, treble_arm64_bvS, treble_arm64_bgS" >&2
-    exit 2
-    ;;
-esac
+# TrebleDroid's generator creates this matrix:
+#   arch: arm64 (64-bit), arm (32-bit), a64 (32-bit userspace/binder64)
+#   partition: a (A-only), b (A/B)
+#   apps: v (vanilla), g (GApps), f (FOSS), o (Go)
+#   privilege: N (non-root), S (root)
+# Validate the shape here so invalid lunches fail immediately, while retaining
+# all device-neutral targets instead of hard-coding ARM64 A/B only.
+if [[ ! "$TARGET_VARIANT" =~ ^treble_(arm64|arm|a64)_(a|b)(v|g|f|o)(N|S)$ ]]; then
+  echo "[-] ERROR: Unsupported Treble variant: $TARGET_VARIANT" >&2
+  echo "    Expected treble_(arm64|arm|a64)_(a|b)(v|g|f|o)(N|S), for example treble_arm64_avN or treble_a64_bvN." >&2
+  exit 2
+fi
 case "$BUILD_TYPE" in
   user|userdebug) ;;
   *)

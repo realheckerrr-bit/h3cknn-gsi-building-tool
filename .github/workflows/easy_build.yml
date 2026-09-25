@@ -122,7 +122,8 @@ jobs:
           bash ../../scripts/check_gsi_compatibility.sh \
             "$BUILD_PROP" \
             "$TARGET_MODEL_INPUT" \
-            compatibility-report.txt
+            compatibility-report.txt \
+            auto
           cat > build-info.txt <<EOF
           GSI build report
           ================
@@ -131,7 +132,7 @@ jobs:
           Image mode: $IMAGE_MODE
           DSU signing: Community GSI; not signed with a Samsung/Google OEM key
           Requested filesystem: ${FS_TYPE}
-          Target architecture: ARM64 A/B Treble GSI
+          Target ABI profile: auto-detected from the source GSI/system properties
           Target model: $TARGET_MODEL_INPUT
           Compatibility preflight:
           $(cat compatibility-report.txt)

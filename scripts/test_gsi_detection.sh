@@ -22,6 +22,8 @@ should_not_match() {
 should_match "crDroid-10.13-arm64_bvN-Unofficial.img.xz"
 should_match "crDroid-10.13-a64_bvN-Unofficial.img.xz"
 should_match "system-treble-arm64_bgN.img.gz"
+should_match "system-treble-arm_avN.img.xz"
+should_match "system-treble-a64_avN.img.xz"
 should_match "https://example.invalid/releases/gsi/system.img.xz"
 should_not_match "Samsung-OneUI-stock-M127F.img.xz"
 should_not_match "vendor-arm64-device.img.xz"

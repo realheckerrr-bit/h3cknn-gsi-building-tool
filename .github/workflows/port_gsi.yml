@@ -114,7 +114,8 @@ jobs:
           bash ../../scripts/check_gsi_compatibility.sh \
             "$BUILD_PROP" \
             "$INPUT_TARGET_MODEL" \
-            compatibility-report.txt
+            compatibility-report.txt \
+            auto
 
           prop() {
             local key value
@@ -175,7 +176,7 @@ jobs:
           Filesystem: $INPUT_FS_TYPE
           Image mode: $IMAGE_MODE
           DSU signing: Community GSI; not signed with a Samsung/Google OEM key
-          Target architecture: ARM64 A/B Treble GSI
+          Target ABI profile: auto-detected from the source GSI/system properties
           Target model: $INPUT_TARGET_MODEL
           Compatibility preflight:
           $(cat compatibility-report.txt)
@@ -195,7 +196,7 @@ jobs:
           - **Filesystem**: $INPUT_FS_TYPE
           - **Image mode**: $IMAGE_MODE
           - **DSU signing**: Community GSI; not signed with a Samsung/Google OEM key
-          - **Target architecture**: ARM64 A/B (Project Treble)
+          - **Target ABI profile**: auto-detected from the source GSI/system properties
           - **Target model**: $INPUT_TARGET_MODEL
           - **Workflow run**: [$GITHUB_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
           - **Commit**: $GITHUB_SHA
