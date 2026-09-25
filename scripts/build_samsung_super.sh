@@ -112,6 +112,7 @@ if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
       -name 'dtbo.img.lz4' \
       -o -name 'vendor_boot.img.lz4' \
       -o -name 'init_boot.img.lz4' \
+      -o -name 'recovery.img.lz4' \
     \) -print | sort
   )
 fi
@@ -504,7 +505,9 @@ fi
 
 # Carry separate AP boot-chain images unchanged when present. These may hold
 # the device DTB or vendor ramdisk and cannot be replaced by a universal GSI
-# system image. The matching AP is the only safe source for them.
+# system image. The matching AP is the only safe source for them. Recovery is
+# included as well because a partial custom AP should not accidentally discard
+# the exact recovery image used by the firmware/kernel combination.
 for AP_AUX_BOOT_SOURCE in "${AP_AUX_BOOT_SOURCES[@]}"; do
   AUX_BOOT_NAME=$(basename "$AP_AUX_BOOT_SOURCE")
   cp -- "$AP_AUX_BOOT_SOURCE" "$OUTPUT_DIR/$AUX_BOOT_NAME"

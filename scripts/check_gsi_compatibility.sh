@@ -31,7 +31,7 @@ prop() {
       sub(/^[[:space:]]+/, "", line)
       if (index(line, wanted "=") == 1) {
         sub(/^[^=]*=/, "", line)
-        sub(/[[:space:]].*$/, "", line)
+        sub(/[[:space:]]+$/, "", line)
         print line
         exit
       }
@@ -41,10 +41,13 @@ prop() {
 
 ABI_LIST="$(prop 'ro.product.system.cpu.abilist' || true)"
 [ -n "$ABI_LIST" ] || ABI_LIST="$(prop 'ro.product.cpu.abilist' || true)"
+ABI64_LIST="$(prop 'ro.product.system.cpu.abilist64' || true)"
+[ -n "$ABI64_LIST" ] || ABI64_LIST="$(prop 'ro.product.cpu.abilist64' || true)"
 ABI="$(prop 'ro.product.system.cpu.abi' || true)"
 [ -n "$ABI" ] || ABI="$(prop 'ro.product.cpu.abi' || true)"
 TREBLE="$(prop 'ro.treble.enabled' || true)"
 VNDK="$(prop 'ro.vndk.version' || true)"
+VNDK_LITE="$(prop 'ro.vndk.lite' || true)"
 SDK="$(prop 'ro.build.version.sdk' || true)"
 ANDROID="$(prop 'ro.build.version.release' || true)"
 DEVICE="$(prop 'ro.product.system.device' || true)"
@@ -71,6 +74,11 @@ if [ -n "$ABI_LIST" ]; then
     *,arm64-v8a,*|*,arm64,*) ;;
     *) fail "The GSI does not advertise an ARM64 ABI (abilist: $ABI_LIST)." ;;
   esac
+elif [ -n "$ABI64_LIST" ]; then
+  case ",$ABI64_LIST," in
+    *,arm64-v8a,*|*,arm64,*) ;;
+    *) fail "The GSI does not advertise an ARM64 ABI (abilist64: $ABI64_LIST)." ;;
+  esac
 elif [ -n "$ABI" ]; then
   case "$ABI" in
     arm64-v8a|arm64) ;;
@@ -90,7 +98,7 @@ if [ -z "$VNDK" ]; then
   warn "ro.vndk.version is missing; the target vendor VNDK must be checked manually."
 fi
 
-if [ -n "$SDK" ] && [ "$SDK" -lt 29 ] 2>/dev/null; then
+if [[ "$SDK" =~ ^[0-9]+$ ]] && [ "$SDK" -lt 29 ]; then
   fail "Android SDK $SDK predates the Android 10 Treble baseline."
 fi
 
@@ -122,9 +130,10 @@ warn "No universal kernel or hardware driver is embedded. The target supplies ve
   printf 'GSI device marker: %s\n' "${DEVICE:-unknown}"
   printf 'GSI model marker: %s\n' "${MODEL:-unknown}"
   printf 'Android version: %s (SDK %s)\n' "${ANDROID:-unknown}" "${SDK:-unknown}"
-  printf 'CPU ABI: %s\n' "${ABI_LIST:-${ABI:-unknown}}"
+  printf 'CPU ABI: %s\n' "${ABI_LIST:-${ABI64_LIST:-${ABI:-unknown}}}"
   printf 'Treble: %s\n' "${TREBLE:-unknown}"
   printf 'VNDK: %s\n' "${VNDK:-unknown}"
+  printf 'VNDKLite: %s\n' "${VNDK_LITE:-unknown}"
   printf '\nHard failures:\n'
   if [ "${#FAILURES[@]}" -eq 0 ]; then
     printf '%s\n' 'none'

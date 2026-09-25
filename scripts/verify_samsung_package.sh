@@ -121,6 +121,21 @@ if [ -n "$ODIN_TAR" ]; then
     echo "[-] ERROR: Odin boot.img.lz4 does not contain an Android boot image." >&2
     exit 1
   fi
+
+  # Preserve-and-verify the remaining AP boot-chain members. They are opaque
+  # to this tool, but their Samsung LZ4 frames must be intact before Odin sees
+  # the package.
+  for member in dtbo.img.lz4 vendor_boot.img.lz4 init_boot.img.lz4 recovery.img.lz4; do
+    if has_member "$member"; then
+      tar -xOf "$ODIN_TAR" "$member" > "$TEMP_DIR/$member"
+      AUX_MAGIC=$(od -An -tx1 -N5 "$TEMP_DIR/$member" | tr -d '[:space:]')
+      if [ "$AUX_MAGIC" != "04224d186c" ]; then
+        echo "[-] ERROR: Odin auxiliary member is not a Samsung content-size LZ4 frame: $member" >&2
+        exit 1
+      fi
+      lz4 -t -- "$TEMP_DIR/$member" >/dev/null
+    fi
+  done
   ODIN_MD5_TAR="${ODIN_TAR}.md5"
   if [ ! -s "$ODIN_MD5_TAR" ]; then
     echo "[-] ERROR: Odin tar is missing its .tar.md5 companion." >&2

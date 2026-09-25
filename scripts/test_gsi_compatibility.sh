@@ -26,6 +26,18 @@ grep -F 'If the target vendor requires VNDKLite, use a known VNDKLite GSI' \
 grep -F 'Android 15 on Exynos 850 commonly needs an exact-device GSI-compatible kernel/boot image' \
   "$TEST_DIR/arm64-report.txt" >/dev/null
 
+cat > "$TEST_DIR/abilist64.prop" <<'EOF'
+ro.treble.enabled=true
+ro.product.cpu.abilist64=arm64-v8a
+ro.build.version.sdk=35
+ro.product.system.model=Galaxy M12 Test Model
+EOF
+
+bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
+  "$TEST_DIR/abilist64.prop" generic "$TEST_DIR/abilist64-report.txt" >/dev/null
+grep -F 'CPU ABI: arm64-v8a' "$TEST_DIR/abilist64-report.txt" >/dev/null
+grep -F 'GSI model marker: Galaxy M12 Test Model' "$TEST_DIR/abilist64-report.txt" >/dev/null
+
 cat > "$TEST_DIR/arm32.prop" <<'EOF'
 ro.treble.enabled=true
 ro.product.cpu.abi=armeabi-v7a

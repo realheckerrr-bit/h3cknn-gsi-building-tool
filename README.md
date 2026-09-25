@@ -109,7 +109,8 @@ result to Samsung content-size `super.img.lz4`, carries the matching AP boot
 image when present, and carries the matching root, system, and vendor vbmeta images present in the AP with AVB
 hashtree/verification-disabled flags. It never
 changes boot, vendor, recovery, or kernel files; separate matching `dtbo`,
-`vendor_boot`, and `init_boot` images are also carried unchanged when present.
+`vendor_boot`, `init_boot`, and `recovery` images are also carried unchanged
+when present.
 The `remove_product` input is
 enabled by default for Exynos 850 packages because the stock Samsung `product`
 logical partition can conflict with the GSI or consume dynamic-partition space

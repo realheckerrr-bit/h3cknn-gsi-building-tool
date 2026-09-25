@@ -7,7 +7,7 @@ ROOT_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
 TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/treble-patch-test.XXXXXX")
 trap 'rm -rf -- "$TEST_DIR"' EXIT
 
-mkdir -p "$TEST_DIR/system/etc/init" "$TEST_DIR/system/priv-app"
+mkdir -p "$TEST_DIR/system/etc/init" "$TEST_DIR/system/priv-app/KnoxCore"
 cat > "$TEST_DIR/system/build.prop" <<'EOF'
 ro.build.display.id=Official Test Build
 ro.build.description=test-device-user 14 UP1A release-keys
@@ -27,6 +27,10 @@ if grep -Eq '^persist\.sys\.usb\.config=|^persist\.sys\.phh\.no_stock_apps=' "$T
 fi
 if grep -Eq '^(dalvik\.vm\.|debug\.sf\.|ro\.surface_flinger\.|persist\.sys\.(assert|strictmode))' "$TEST_DIR/system/build.prop"; then
   echo "[-] Unsafe universal framework tuning property was injected." >&2
+  exit 1
+fi
+if [ -e "$TEST_DIR/system/priv-app/KnoxCore" ]; then
+  echo "[-] System-partition OEM service cleanup targeted the wrong path." >&2
   exit 1
 fi
 

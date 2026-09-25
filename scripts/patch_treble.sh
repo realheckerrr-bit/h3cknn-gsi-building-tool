@@ -60,6 +60,16 @@ if [ -z "$BUILD_PROP" ]; then
   exit 1
 fi
 
+# Extractors can expose the system partition directly at SYSTEM_ROOT or below
+# a system/ (occasionally system/system/) directory. Resolve the root from
+# the build.prop we actually found so optional edits do not silently target
+# paths that do not exist.
+case "$BUILD_PROP" in
+  "$SYSTEM_ROOT/system/system/"*) SYSTEM_PARTITION_ROOT="$SYSTEM_ROOT/system/system" ;;
+  "$SYSTEM_ROOT/system/"*) SYSTEM_PARTITION_ROOT="$SYSTEM_ROOT/system" ;;
+  *) SYSTEM_PARTITION_ROOT="$SYSTEM_ROOT" ;;
+esac
+
 echo "==> [TREBLE-PATCH] Patching properties in: $BUILD_PROP"
 
 # Ensure write permissions
@@ -157,7 +167,7 @@ echo "  [+] ro.h3cknn.gsi.* properties set."
 # 3. Clean up OEM-specific crashing hardware services
 echo "==> [TREBLE-PATCH] Sanitizing init scripts and services..."
 
-INIT_DIRS=("$SYSTEM_ROOT/system/etc/init" "$SYSTEM_ROOT/etc/init")
+INIT_DIRS=("$SYSTEM_PARTITION_ROOT/etc/init" "$SYSTEM_PARTITION_ROOT/system/etc/init")
 for IDIR in "${INIT_DIRS[@]}"; do
   if [ -d "$IDIR" ]; then
     # Disable OEM-specific proprietary daemons that crash without stock vendor
@@ -175,19 +185,19 @@ done
 # 4. Remove OEM bloatware that hinders GSI booting
 echo "==> [TREBLE-PATCH] Removing vendor-locked bloatware..."
 REMOVE_TARGETS=(
-  "system/priv-app/Velvet"
-  "system/priv-app/GoogleFeedback"
-  "system/app/Stk"
-  "system/priv-app/SamsungPass"
-  "system/priv-app/SamsungBilling"
-  "system/priv-app/KnoxCore"
-  "system/priv-app/MIUIFaceUnlock"
+  "priv-app/Velvet"
+  "priv-app/GoogleFeedback"
+  "app/Stk"
+  "priv-app/SamsungPass"
+  "priv-app/SamsungBilling"
+  "priv-app/KnoxCore"
+  "priv-app/MIUIFaceUnlock"
 )
 
 for TARGET in "${REMOVE_TARGETS[@]}"; do
-  if [ -d "$SYSTEM_ROOT/$TARGET" ]; then
+  if [ -d "$SYSTEM_PARTITION_ROOT/$TARGET" ]; then
     echo "  -> Removing $TARGET"
-    "${SUDO[@]}" rm -rf "$SYSTEM_ROOT/$TARGET"
+    "${SUDO[@]}" rm -rf "$SYSTEM_PARTITION_ROOT/$TARGET"
   fi
 done
 
@@ -197,8 +207,10 @@ done
 # For OEM porting, we download them from phhusson's CI artifacts instead.
 echo "==> [TREBLE-PATCH] Injecting Phh Treble overlay (CI artifact)..."
 
-OVERLAY_DIR="$SYSTEM_ROOT/system/overlay"
-[ -d "$SYSTEM_ROOT/overlay" ] && OVERLAY_DIR="$SYSTEM_ROOT/overlay"
+OVERLAY_DIR="$SYSTEM_PARTITION_ROOT/overlay"
+if [ -d "$SYSTEM_PARTITION_ROOT/system/overlay" ]; then
+  OVERLAY_DIR="$SYSTEM_PARTITION_ROOT/system/overlay"
+fi
 "${SUDO[@]}" mkdir -p "$OVERLAY_DIR"
 
 # An overlay URL must be supplied by the caller because the old v402 release
@@ -212,7 +224,7 @@ else
 fi
 
 # Download TrebleApp from phhusson CI artifacts
-APP_DIR="$SYSTEM_ROOT/system/priv-app/TrebleApp"
+APP_DIR="$SYSTEM_PARTITION_ROOT/priv-app/TrebleApp"
 "${SUDO[@]}" mkdir -p "$APP_DIR"
 TREBLEAPP_URL="${TREBLE_APP_URL:-}"
 if [ -n "$TREBLEAPP_URL" ] && "${SUDO[@]}" curl -fsSL --max-time 60 "$TREBLEAPP_URL" -o "$APP_DIR/TrebleApp.apk" 2>/dev/null; then
@@ -237,7 +249,7 @@ if [ "${DISABLE_FSTAB_ENCRYPTION:-0}" = "1" ]; then
     "${SUDO[@]}" sed -i 's/forceencrypt=[^,]*//g' "$FSTAB"
     "${SUDO[@]}" sed -i 's/,verify//g' "$FSTAB"
     "${SUDO[@]}" sed -i 's/,avb[^,]*//g' "$FSTAB"
-  done < <(find "$SYSTEM_ROOT" -name "*fstab*" -type f -print 2>/dev/null || true)
+  done < <(find "$SYSTEM_PARTITION_ROOT" -name "*fstab*" -type f -print 2>/dev/null || true)
 else
   echo "  [!] Leaving fstab, AVB, and encryption flags unchanged"
 fi
