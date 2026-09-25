@@ -98,6 +98,10 @@ case "$TARGET_MODEL" in
   generic|""|unknown) ;;
   SM-M127*|SM-F127*|SM-A127*)
     warn "Galaxy M12/A12 Exynos 850 requires the exact matching vendor, boot/kernel, DTB, vbmeta, recovery, and device-specific multidisabler procedure."
+    ANDROID_MAJOR="${ANDROID%%.*}"
+    if [[ "$ANDROID_MAJOR" =~ ^[0-9]+$ ]] && [ "$ANDROID_MAJOR" -ge 14 ]; then
+      warn "Android $ANDROID on Exynos 850 commonly needs an exact-device GSI-compatible kernel/boot image; supply boot_url in the Samsung workflow instead of assuming stock boot will work."
+    fi
     ;;
   *)
     warn "Target model '$TARGET_MODEL' is device-specific; use only its matching vendor, boot/kernel, DTB, vbmeta, and recovery."
