@@ -18,7 +18,19 @@ TEMP_FILE="$TEMP_DIR/lpmake"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
 
 echo "==> [SETUP] Installing verified AOSP lpmake..."
-curl -fsSL "$LPMake_URL" | base64 --decode > "$TEMP_FILE"
+curl --fail --silent --show-error --location \
+  --retry 5 --retry-all-errors --retry-delay 5 \
+  --connect-timeout 30 --max-time 180 \
+  "$LPMake_URL" -o "$TEMP_DIR/lpmake.b64"
+if [ ! -s "$TEMP_DIR/lpmake.b64" ]; then
+  echo "[-] ERROR: AOSP lpmake download was empty." >&2
+  exit 1
+fi
+base64 --decode "$TEMP_DIR/lpmake.b64" > "$TEMP_FILE"
+if [ ! -s "$TEMP_FILE" ]; then
+  echo "[-] ERROR: AOSP lpmake download could not be decoded." >&2
+  exit 1
+fi
 printf '%s  %s\n' "$LPMake_SHA256" "$TEMP_FILE" | sha256sum --check --status
 ANDROID_LIB_DIR="$(dirname "$(find -L /usr/lib -type f -path '*/android/libbase.so' -print -quit)")"
 if [ -z "$ANDROID_LIB_DIR" ] || [ "$ANDROID_LIB_DIR" = "." ]; then
@@ -26,7 +38,10 @@ if [ -z "$ANDROID_LIB_DIR" ] || [ "$ANDROID_LIB_DIR" = "." ]; then
   exit 1
 fi
 echo "==> [SETUP] Installing matching AOSP lpmake libraries..."
-curl -fsSL "$LIB_ARCHIVE_URL" -o "$TEMP_DIR/lib64.tar.gz"
+curl --fail --silent --show-error --location \
+  --retry 5 --retry-all-errors --retry-delay 5 \
+  --connect-timeout 30 --max-time 180 \
+  "$LIB_ARCHIVE_URL" -o "$TEMP_DIR/lib64.tar.gz"
 mkdir -p "$TEMP_DIR/lib64"
 tar -xzf "$TEMP_DIR/lib64.tar.gz" -C "$TEMP_DIR/lib64"
 if [ ! -f "$TEMP_DIR/lib64/liblp.so" ]; then

@@ -69,12 +69,18 @@ TOOLS_DIR="$(dirname "$(realpath "$0")")/../tools"
 echo "==> [SETUP] Installing payload-dumper-go..."
 if ! command -v payload-dumper-go &>/dev/null; then
   # Fetch latest version tag via GitHub API, fall back to known good version
-  PDGO_VERSION=$(curl -sfL "https://api.github.com/repos/ssut/payload-dumper-go/releases/latest" \
+  PDGO_VERSION=$(curl --fail --silent --show-error --location \
+    --retry 5 --retry-all-errors --retry-delay 5 \
+    --connect-timeout 30 --max-time 60 \
+    "https://api.github.com/repos/ssut/payload-dumper-go/releases/latest" \
     | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))" 2>/dev/null \
     || echo "2.0.2")
   PDGO_URL="https://github.com/ssut/payload-dumper-go/releases/download/${PDGO_VERSION}/payload-dumper-go_${PDGO_VERSION}_linux_amd64.tar.gz"
   echo "  -> Downloading payload-dumper-go v${PDGO_VERSION}..."
-  curl -fsSL "$PDGO_URL" -o /tmp/payload-dumper-go.tar.gz
+  curl --fail --silent --show-error --location \
+    --retry 5 --retry-all-errors --retry-delay 5 \
+    --connect-timeout 30 --max-time 180 \
+    "$PDGO_URL" -o /tmp/payload-dumper-go.tar.gz
   tar -xzf /tmp/payload-dumper-go.tar.gz -C /tmp/
   sudo mv /tmp/payload-dumper-go "$BIN_DIR/"
   sudo chmod +x "$BIN_DIR/payload-dumper-go"
@@ -88,7 +94,10 @@ echo "==> [SETUP] Ensuring lpunpack.py is available..."
 # BUG FIX: Previous version fetched from ErfanGSIs which is 404.
 # Now uses unix3dgforce/lpunpack - a pure-Python super.img unpacker.
 if [ ! -f "$TOOLS_DIR/lpunpack.py" ]; then
-  curl -fsSL "https://raw.githubusercontent.com/unix3dgforce/lpunpack/master/lpunpack.py" \
+  curl --fail --silent --show-error --location \
+    --retry 5 --retry-all-errors --retry-delay 5 \
+    --connect-timeout 30 --max-time 60 \
+    "https://raw.githubusercontent.com/unix3dgforce/lpunpack/master/lpunpack.py" \
     -o "$TOOLS_DIR/lpunpack.py"
   echo "  [+] lpunpack.py downloaded to tools/."
 else
