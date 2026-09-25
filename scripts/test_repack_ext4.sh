@@ -40,4 +40,18 @@ gzip -dc "$OUTPUT_DIR/repack-smoke.img.gz" > "$RAW_IMAGE"
 debugfs -R 'cat /build.prop' "$RAW_IMAGE" 2>/dev/null \
   | grep -F 'ro.treble.enabled=true' >/dev/null
 
+# A filesystem with build.prop but no second-stage init must not pass the
+# release validator merely because its ext4 magic is valid.
+BAD_IMAGE="$TEST_DIR/repack-smoke.bad.raw.img"
+cp -- "$RAW_IMAGE" "$BAD_IMAGE"
+debugfs -w -R 'rm /bin/init' "$BAD_IMAGE" >/dev/null 2>&1
+gzip -c "$BAD_IMAGE" > "$TEST_DIR/repack-smoke.bad.img.gz"
+xz -c "$BAD_IMAGE" > "$TEST_DIR/repack-smoke.bad.img.xz"
+if bash "$ROOT_DIR/scripts/validate_gsi_output.sh" \
+  "$TEST_DIR/repack-smoke.bad.img.xz" \
+  "$TEST_DIR/repack-smoke.bad.img.gz" >/dev/null 2>&1; then
+  echo "[-] Image without second-stage init incorrectly passed validation." >&2
+  exit 1
+fi
+
 echo "==> ext4 repack integration test passed."
