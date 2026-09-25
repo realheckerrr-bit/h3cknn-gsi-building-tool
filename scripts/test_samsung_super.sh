@@ -170,6 +170,24 @@ tar -tf "$TEST_DIR/output-ap-auto/smoke-ap-auto-odin.tar" \
 grep -F 'Removed logical partitions: product' \
   "$TEST_DIR/output-ap-auto/smoke-ap-auto.build-info.txt" >/dev/null
 
+# A Galaxy M12 AP without root vbmeta or boot must not produce a misleading
+# Odin package. Standalone super inputs remain supported above for TWRP users.
+mkdir -p "$TEST_DIR/ap-incomplete"
+cp "$TEST_DIR/ap/super.img.lz4" "$TEST_DIR/ap-incomplete/super.img.lz4"
+cp "$TEST_DIR/ap/vbmeta_system.img.lz4" "$TEST_DIR/ap-incomplete/vbmeta_system.img.lz4"
+tar -cf "$TEST_DIR/ap-incomplete.tar" -C "$TEST_DIR/ap-incomplete" \
+  super.img.lz4 vbmeta_system.img.lz4
+if SAMSUNG_DEVICE_MODEL=SM-M127F \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/ap-incomplete.tar" \
+    "$TEST_DIR/gsi.img" \
+    should-fail-m12-ap \
+    "$TEST_DIR/work-incomplete-ap" \
+    "$TEST_DIR/output-incomplete-ap"; then
+  echo "[-] Incomplete M12 AP incorrectly produced a package." >&2
+  exit 1
+fi
+
 printf 'not a filesystem image\n' > "$TEST_DIR/invalid.img"
 if SAMSUNG_DEVICE_MODEL=SM-TEST \
   bash "$ROOT_DIR/scripts/build_samsung_super.sh" \

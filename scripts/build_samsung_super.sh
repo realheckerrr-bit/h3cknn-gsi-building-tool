@@ -84,9 +84,11 @@ echo "==> [SAMSUNG-SUPER] GSI input: $(basename "$GSI_INPUT")"
 STOCK_SOURCE="$STOCK_INPUT"
 AP_VBMETA_SOURCES=()
 AP_BOOT_SOURCE=""
+IS_AP_ARCHIVE=0
 STOCK_TYPE=$(file -b "$STOCK_SOURCE" | tr '[:upper:]' '[:lower:]')
 if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
   || printf '%s' "$STOCK_INPUT" | grep -Eiq '\.tar(\.md5)?$'; then
+  IS_AP_ARCHIVE=1
   AP_DIR="$TEMP_DIR/ap"
   mkdir -p "$AP_DIR"
   7z x -y "$STOCK_INPUT" -o"$AP_DIR" >/dev/null
@@ -104,6 +106,26 @@ if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
   )
   AP_BOOT_SOURCE=$(find "$AP_DIR" -type f \( -name 'boot.img.lz4' -o -name 'boot.img' \) -print -quit)
 fi
+
+# An M12/A12 Exynos 850 Odin package without the matching AP boot image or
+# root vbmeta is not a complete boot package. Do not publish a package that
+# looks flashable but is guaranteed to fall back to recovery/bootloop. A
+# standalone super image is still allowed for users doing the device-specific
+# TWRP/kernel/vbmeta procedure themselves.
+case "$DEVICE_MODEL" in
+  SM-M127*|SM-F127*|SM-A127*)
+    if [ "$IS_AP_ARCHIVE" = "1" ]; then
+      if [ -z "$AP_BOOT_SOURCE" ] && [ -z "${SAMSUNG_BOOT_INPUT:-}" ]; then
+        echo "[-] ERROR: M12/A12 AP does not contain boot.img(.lz4); supply an exact-device boot_url." >&2
+        exit 1
+      fi
+      if ! printf '%s\n' "${AP_VBMETA_SOURCES[@]}" | grep -Fxq "$AP_DIR/vbmeta.img.lz4"; then
+        echo "[-] ERROR: M12/A12 AP does not contain root vbmeta.img.lz4; refusing an incomplete Odin package." >&2
+        exit 1
+      fi
+    fi
+    ;;
+esac
 
 STOCK_IMAGE="$TEMP_DIR/stock.super.img"
 STOCK_EXT="${STOCK_SOURCE##*.}"

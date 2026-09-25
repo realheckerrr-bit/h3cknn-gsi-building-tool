@@ -129,6 +129,11 @@ firmware binary.
 The resulting `.tar` remains device-specific. Follow the matching Samsung
 recovery, multidisabler, data-format, and kernel procedure. A package made
 from another M12 regional firmware is not safe to flash.
+For M12/A12 AP inputs, the builder now refuses to publish an Odin package if
+the AP is missing root `vbmeta.img.lz4` or a usable matching boot image; this
+prevents a misleading package that cannot boot. Standalone super inputs remain
+available for advanced TWRP workflows where those device files are supplied
+separately.
 
 ## 📣 Telegram release notifications
 
