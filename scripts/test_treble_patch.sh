@@ -25,5 +25,9 @@ if grep -Eq '^persist\.sys\.usb\.config=|^persist\.sys\.phh\.no_stock_apps=' "$T
   echo "[-] Unsafe universal USB/PHH property was injected." >&2
   exit 1
 fi
+if grep -Eq '^(dalvik\.vm\.|debug\.sf\.|ro\.surface_flinger\.|persist\.sys\.(assert|strictmode))' "$TEST_DIR/system/build.prop"; then
+  echo "[-] Unsafe universal framework tuning property was injected." >&2
+  exit 1
+fi
 
 echo "==> Treble patch safety test passed."

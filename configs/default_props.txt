@@ -7,22 +7,6 @@ ro.treble.enabled=true
 # Do not force PHH-only or USB transport properties. Vendor init/USB HALs own
 # those settings and differ across devices; overriding them is not a universal
 # driver and can break first boot or recovery access.
-
-# Generic Dalvik Heap Configuration for Universal Device RAM
-dalvik.vm.heapstartsize=8m
-dalvik.vm.heapgrowthlimit=192m
-dalvik.vm.heapsize=512m
-dalvik.vm.heaptargetutilization=0.75
-dalvik.vm.heapminfree=512k
-dalvik.vm.heapmaxfree=8m
-
-# Hardware acceleration & Rendering
-debug.sf.disable_backpressure=1
-debug.sf.latch_unsignaled=1
-ro.surface_flinger.has_wide_color_display=false
-ro.surface_flinger.has_HDR_display=false
-
-# Keep optional debug fallbacks limited to properties that do not override
-# vendor radio, codec, Bluetooth, AVB, or encryption behavior.
-persist.sys.assert.enable=false
-persist.sys.strictmode.disable=true
+# Do not force generic heap, SurfaceFlinger, strict-mode, or debug values
+# either. These are framework/vendor tuning knobs, not drivers, and incorrect
+# values can cause display failures, memory pressure, or early boot problems.
