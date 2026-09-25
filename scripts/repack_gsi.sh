@@ -67,14 +67,50 @@ else
     -O ^dir_index \
     -L "system" "$RAW_IMG"
 
-  MNT_POINT="$WORK_DIR/mnt_repack"
-  sudo mkdir -p "$MNT_POINT"
+  # e2fsdroid is the Android image-population tool used by AOSP.  It writes
+  # ownership, modes, symlinks, capabilities, and (when a text file_contexts
+  # file is available) SELinux labels directly into the filesystem.  A plain
+  # mounted `cp -a` can silently lose those details and produce an image that
+  # passes a filesystem check but bootloops at init/zygote.
+  if command -v e2fsdroid >/dev/null 2>&1; then
+    echo "==> [REPACK] Populating ext4 with Android e2fsdroid metadata..."
+    FILE_CONTEXTS=""
+    while IFS= read -r candidate; do
+      if file -b "$candidate" 2>/dev/null | grep -Eiq 'text|ascii'; then
+        FILE_CONTEXTS="$candidate"
+        break
+      fi
+    done < <(find "$SYSTEM_ROOT" -type f \( \
+      -name 'file_contexts' -o \
+      -name 'plat_file_contexts' -o \
+      -name 'vendor_file_contexts' \
+    \) -print 2>/dev/null | sort)
 
-  echo "==> [REPACK] Copying files to new filesystem..."
-  sudo mount -o loop "$RAW_IMG" "$MNT_POINT"
-  # BUG FIX: use trailing /. to copy directory contents, not the directory itself
-  sudo cp -a "$SYSTEM_ROOT"/. "$MNT_POINT/" || { sudo umount "$MNT_POINT"; false; }
-  sudo umount "$MNT_POINT"
+    E2FSDROID_ARGS=(-e -f "$SYSTEM_ROOT" -a /system)
+    if [ -n "$FILE_CONTEXTS" ]; then
+      echo "  -> SELinux file contexts: $FILE_CONTEXTS"
+      E2FSDROID_ARGS+=(-S "$FILE_CONTEXTS")
+    else
+      echo "  [!] No text file_contexts found; preserving source metadata without relabeling"
+    fi
+    e2fsdroid "${E2FSDROID_ARGS[@]}" "$RAW_IMG"
+  else
+    echo "  [!] e2fsdroid unavailable; using mounted cp fallback"
+    MNT_POINT="$WORK_DIR/mnt_repack"
+    sudo mkdir -p "$MNT_POINT"
+    cleanup_mount() {
+      if mountpoint -q "$MNT_POINT" 2>/dev/null; then
+        sudo umount "$MNT_POINT"
+      fi
+    }
+    trap cleanup_mount EXIT
+    echo "==> [REPACK] Copying files to new filesystem..."
+    sudo mount -o loop "$RAW_IMG" "$MNT_POINT"
+    # Use trailing /. to copy directory contents, not the directory itself.
+    sudo cp -a "$SYSTEM_ROOT"/. "$MNT_POINT/"
+    cleanup_mount
+    trap - EXIT
+  fi
 
   # Shrink image to minimum size to save space
   echo "==> [REPACK] Optimizing filesystem size..."
