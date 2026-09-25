@@ -48,6 +48,12 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends e2fsprogs
           bash scripts/test_repack_ext4.sh
 
+      - name: "🧱 OEM EROFS repack integration"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends erofs-utils
+          bash scripts/test_repack_erofs.sh
+
       - name: "Samsung stock-super packaging"
         run: |
           sudo apt-get update -qq
