@@ -8,12 +8,17 @@ TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/repack-gsi-test.XXXXXX")
 trap 'rm -rf -- "$TEST_DIR"' EXIT
 
 mkdir -p "$TEST_DIR/system/etc/selinux"
+mkdir -p "$TEST_DIR/system/bin"
 cat > "$TEST_DIR/system/build.prop" <<'EOF'
 ro.treble.enabled=true
 ro.product.system.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi
 ro.build.version.release=14
 ro.build.version.sdk=34
 EOF
+cat > "$TEST_DIR/system/bin/init" <<'EOF'
+#!/system/bin/sh
+EOF
+chmod 755 "$TEST_DIR/system/bin/init"
 # A small text context file lets e2fsdroid exercise its SELinux-label path
 # when the host provides that Android build tool. Hosts without it use the
 # guarded mounted-copy fallback in repack_gsi.sh.
