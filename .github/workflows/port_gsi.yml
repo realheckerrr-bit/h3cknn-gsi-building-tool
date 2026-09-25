@@ -216,9 +216,8 @@ jobs:
 
           ### Compatibility preflight
 
-          ```text
+          Compatibility report:
           $(cat compatibility-report.txt)
-          ```
 
           ### Flashing
 
