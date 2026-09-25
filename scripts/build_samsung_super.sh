@@ -85,6 +85,7 @@ echo "==> [SAMSUNG-SUPER] GSI input: $(basename "$GSI_INPUT")"
 STOCK_SOURCE="$STOCK_INPUT"
 AP_VBMETA_SOURCES=()
 AP_BOOT_SOURCE=""
+AP_AUX_BOOT_SOURCES=()
 IS_AP_ARCHIVE=0
 STOCK_TYPE=$(file -b "$STOCK_SOURCE" | tr '[:upper:]' '[:lower:]')
 if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
@@ -106,6 +107,13 @@ if printf '%s' "$STOCK_TYPE" | grep -Eiq 'tar archive' \
     \) -print | sort
   )
   AP_BOOT_SOURCE=$(find "$AP_DIR" -type f \( -name 'boot.img.lz4' -o -name 'boot.img' \) -print -quit)
+  mapfile -t AP_AUX_BOOT_SOURCES < <(
+    find "$AP_DIR" -type f \( \
+      -name 'dtbo.img.lz4' \
+      -o -name 'vendor_boot.img.lz4' \
+      -o -name 'init_boot.img.lz4' \
+    \) -print | sort
+  )
 fi
 
 # An M12/A12 Exynos 850 Odin package without the matching AP boot image or
@@ -354,7 +362,10 @@ rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT" \
   "$BOOT_LZ4_OUT" \
   "$OUTPUT_DIR/vbmeta.img.lz4" \
   "$OUTPUT_DIR/vbmeta_system.img.lz4" \
-  "$OUTPUT_DIR/vbmeta_vendor.img.lz4"
+  "$OUTPUT_DIR/vbmeta_vendor.img.lz4" \
+  "$OUTPUT_DIR/dtbo.img.lz4" \
+  "$OUTPUT_DIR/vendor_boot.img.lz4" \
+  "$OUTPUT_DIR/init_boot.img.lz4"
 
 echo "==> [SAMSUNG-SUPER] Rebuilding stock logical-partition metadata..."
 lpmake "${LPM_ARGS[@]}" --sparse --output "$SUPER_OUT"
@@ -391,6 +402,7 @@ VBMETA_READY=0
 VBMETA_ROOT_FOUND=0
 ODIN_MEMBERS=("$(basename "$SUPER_LZ4_OUT")")
 VBMETA_NAMES=()
+AUX_BOOT_NAMES=()
 if [ "${#AP_VBMETA_SOURCES[@]}" -gt 0 ]; then
   echo "==> [SAMSUNG-SUPER] Patching matching AP vbmeta AVB flags..."
   for AP_VBMETA_SOURCE in "${AP_VBMETA_SOURCES[@]}"; do
@@ -490,6 +502,16 @@ if [ -n "$BOOT_INPUT" ]; then
   BOOT_STATUS="Included: $(basename "$BOOT_LZ4_OUT") from $BOOT_INPUT_DESCRIPTION ($(basename "$BOOT_INPUT"))"
 fi
 
+# Carry separate AP boot-chain images unchanged when present. These may hold
+# the device DTB or vendor ramdisk and cannot be replaced by a universal GSI
+# system image. The matching AP is the only safe source for them.
+for AP_AUX_BOOT_SOURCE in "${AP_AUX_BOOT_SOURCES[@]}"; do
+  AUX_BOOT_NAME=$(basename "$AP_AUX_BOOT_SOURCE")
+  cp -- "$AP_AUX_BOOT_SOURCE" "$OUTPUT_DIR/$AUX_BOOT_NAME"
+  ODIN_MEMBERS+=("$AUX_BOOT_NAME")
+  AUX_BOOT_NAMES+=("$AUX_BOOT_NAME")
+done
+
 if [ "$VBMETA_READY" = "1" ]; then
   tar -H ustar -cf "$ODIN_TAR_OUT" -C "$OUTPUT_DIR" "${ODIN_MEMBERS[@]}"
   ODIN_MD5=$(md5sum "$ODIN_TAR_OUT" | cut -d' ' -f1)
@@ -515,6 +537,7 @@ Odin MD5: $([ -s "$ODIN_MD5_TAR_OUT" ] && md5sum "$ODIN_TAR_OUT" | cut -d' ' -f1
 Boot image: $BOOT_STATUS
 Removed logical partitions: ${REMOVED_PARTITIONS[*]:-none}
 AVB images: ${VBMETA_NAMES[*]:-none}; patched flags include 0x03 only for matching AP images
+Auxiliary boot-chain images: ${AUX_BOOT_NAMES[*]:-none}; copied unchanged from the matching AP
 Warning: use only with the exact matching Samsung model/AP/firmware. Factory reset and device-specific multidisabler/kernel steps may still be required.
 EOF
 

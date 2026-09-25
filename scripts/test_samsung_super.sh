@@ -112,8 +112,11 @@ pathlib.Path(sys.argv[1]).write_bytes(data)
 PY
 cp "$TEST_DIR/boot.img" "$TEST_DIR/ap/ap-boot.img"
 lz4 -f -B6 --content-size "$TEST_DIR/ap/ap-boot.img" "$TEST_DIR/ap/boot.img.lz4" >/dev/null
+printf 'matching dtbo\n' > "$TEST_DIR/ap/dtbo.raw"
+lz4 -f -B6 --content-size "$TEST_DIR/ap/dtbo.raw" "$TEST_DIR/ap/dtbo.img.lz4" >/dev/null
 tar -cf "$TEST_DIR/ap.tar" -C "$TEST_DIR/ap" \
-  super.img.lz4 vbmeta.img.lz4 vbmeta_system.img.lz4 vbmeta_vendor.img.lz4 boot.img.lz4
+  super.img.lz4 vbmeta.img.lz4 vbmeta_system.img.lz4 vbmeta_vendor.img.lz4 \
+  boot.img.lz4 dtbo.img.lz4
 mkdir -p "$TEST_DIR/output-ap"
 SAMSUNG_DEVICE_MODEL=SM-TEST \
 SAMSUNG_REMOVE_PRODUCT=1 \
@@ -133,6 +136,7 @@ tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta.img.lz4' >/de
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta_system.img.lz4' >/dev/null
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta_vendor.img.lz4' >/dev/null
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'boot.img.lz4' >/dev/null
+tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'dtbo.img.lz4' >/dev/null
 tar -xf "$TEST_DIR/output-ap/smoke-ap-odin.tar" -C "$TEST_DIR/output-ap"
 lz4 -dc "$TEST_DIR/output-ap/vbmeta.img.lz4" > "$TEST_DIR/output-ap/vbmeta.img"
 lz4 -dc "$TEST_DIR/output-ap/vbmeta_system.img.lz4" > "$TEST_DIR/output-ap/vbmeta_system.img"
