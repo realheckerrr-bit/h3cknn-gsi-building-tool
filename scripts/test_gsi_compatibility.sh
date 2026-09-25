@@ -21,6 +21,8 @@ bash "$ROOT_DIR/scripts/check_gsi_compatibility.sh" \
   "$TEST_DIR/arm64.prop" SM-M127F "$TEST_DIR/arm64-report.txt" >/dev/null
 grep -Fx 'Status: WARN' "$TEST_DIR/arm64-report.txt" >/dev/null
 grep -F 'No universal kernel or hardware driver is embedded.' "$TEST_DIR/arm64-report.txt" >/dev/null
+grep -F 'If the target vendor requires VNDKLite, use a known VNDKLite GSI' \
+  "$TEST_DIR/arm64-report.txt" >/dev/null
 grep -F 'Android 15 on Exynos 850 commonly needs an exact-device GSI-compatible kernel/boot image' \
   "$TEST_DIR/arm64-report.txt" >/dev/null
 
