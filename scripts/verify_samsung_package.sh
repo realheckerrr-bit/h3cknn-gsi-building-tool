@@ -20,7 +20,7 @@ if [ -z "$OUTPUT_DIR" ] || [ ! -d "$OUTPUT_DIR" ]; then
   exit 2
 fi
 
-for command_name in file lz4 od tar python3; do
+for command_name in file lz4 od tar md5sum stat python3; do
   command -v "$command_name" >/dev/null 2>&1 || {
     echo "[-] ERROR: Required verifier command is missing: $command_name" >&2
     exit 1
@@ -119,6 +119,25 @@ if [ -n "$ODIN_TAR" ]; then
   BOOT_MAGIC=$(od -An -tc -N8 "$TEMP_DIR/boot.img" | tr -d '[:space:]')
   if [ "$BOOT_MAGIC" != "ANDROID!" ]; then
     echo "[-] ERROR: Odin boot.img.lz4 does not contain an Android boot image." >&2
+    exit 1
+  fi
+  ODIN_MD5_TAR="${ODIN_TAR}.md5"
+  if [ ! -s "$ODIN_MD5_TAR" ]; then
+    echo "[-] ERROR: Odin tar is missing its .tar.md5 companion." >&2
+    exit 1
+  fi
+  MD5_SIZE=$(stat -c '%s' "$ODIN_MD5_TAR")
+  if [ "$MD5_SIZE" -le 32 ]; then
+    echo "[-] ERROR: Odin .tar.md5 file is too small." >&2
+    exit 1
+  fi
+  PAYLOAD_SIZE=$((MD5_SIZE - 32))
+  dd if="$ODIN_MD5_TAR" of="$TEMP_DIR/odin-md5.payload" \
+    bs=1 count="$PAYLOAD_SIZE" status=none
+  EXPECTED_MD5=$(tail -c 32 "$ODIN_MD5_TAR")
+  ACTUAL_MD5=$(md5sum "$TEMP_DIR/odin-md5.payload" | cut -d' ' -f1)
+  if [ "$EXPECTED_MD5" != "$ACTUAL_MD5" ]; then
+    echo "[-] ERROR: Odin .tar.md5 digest mismatch." >&2
     exit 1
   fi
   echo "==> Samsung Odin tar verified: $(basename "$ODIN_TAR")"

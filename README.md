@@ -116,9 +116,10 @@ keeping it. A standalone `super.img` or
 `super.img.lz4` input is accepted for inspection/raw output, but it cannot
 produce a safe Odin tar without the matching AP vbmeta.
 
-The release contains a `*-odin.tar` only when the AP includes root
-`vbmeta.img.lz4`, plus a `*-super-only.tar` for the raw super image. Flash the
-Odin tar only on the exact same model and firmware family. Keep the matching
+The release contains `*-odin.tar` and an Odin-compatible `*-odin.tar.md5` only
+when the AP includes root `vbmeta.img.lz4`, plus a `*-super-only.tar` for the
+raw super image. Flash the `.tar.md5` package only on the exact same model and
+firmware family. Keep the matching
 BL/CP/CSC package available; a factory reset and the device-specific
 multidisabler/kernel procedure may still be required. For Exynos 850 Android
 14+ installations that need a custom kernel, use the workflow's optional

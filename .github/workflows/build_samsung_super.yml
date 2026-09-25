@@ -104,7 +104,7 @@ jobs:
             workspace/output \
             "$OUTPUT_NAME_INPUT"
           cd workspace/output
-          find . -maxdepth 1 -type f \( -name '*.tar' -o -name '*.img' -o -name '*.img.lz4' -o -name '*.build-info.txt' \) -print0 \
+          find . -maxdepth 1 -type f \( -name '*.tar' -o -name '*.tar.md5' -o -name '*.img' -o -name '*.img.lz4' -o -name '*.build-info.txt' \) -print0 \
             | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
       - name: Upload package artifact
@@ -113,6 +113,7 @@ jobs:
           name: ${{ inputs.output_name }}
           path: |
             workspace/output/*.tar
+            workspace/output/*.tar.md5
             workspace/output/super.img
             workspace/output/super.img.lz4
             workspace/output/*.img.lz4
@@ -133,7 +134,7 @@ jobs:
             - **Device model**: `${{ inputs.device_model }}`
             - **Stock source**: `${{ inputs.stock_url }}`
             - **GSI source**: `${{ inputs.gsi_url }}`
-            - **Odin output**: `${{ inputs.output_name }}-odin.tar` is created only when the supplied AP contains supported matching vbmeta images; root/system/vendor vbmeta images present in that AP are patched and included.
+            - **Odin output**: `${{ inputs.output_name }}-odin.tar.md5` (plus the raw `.tar`) is created only when the supplied AP contains supported matching vbmeta images; root/system/vendor vbmeta images present in that AP are patched and included.
             - **Boot**: the exact AP stock `boot.img.lz4` is included automatically when present; an explicitly supplied `boot_url` overrides it for a matching custom kernel.
             - **Product**: `${{ inputs.remove_product }}` (removing Samsung product is recommended for Exynos 850 GSI packages).
             - **Preserved**: stock vendor/odm/system_ext, recovery, and kernel files; the matching AP stock boot is included unchanged when present, unless the optional exact-device boot input overrides it.
@@ -143,6 +144,7 @@ jobs:
             factory-reset, and kernel procedure for the device. Do not use it on another model.
           files: |
             workspace/output/*.tar
+            workspace/output/*.tar.md5
             workspace/output/super.img
             workspace/output/super.img.lz4
             workspace/output/*.img.lz4

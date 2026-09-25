@@ -51,7 +51,7 @@ if [ -n "${SAMSUNG_BOOT_INPUT:-}" ]; then
   echo "==> [SAMSUNG-SUPER] Optional exact-device boot input: $SAMSUNG_BOOT_INPUT"
 fi
 
-for command_name in file lz4 simg2img tar python3 stat od sed; do
+for command_name in file lz4 simg2img tar md5sum python3 stat od sed; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "[-] ERROR: Required command is missing: $command_name" >&2
     exit 1
@@ -347,8 +347,10 @@ SUPER_OUT="$OUTPUT_DIR/super.img"
 SUPER_LZ4_OUT="$OUTPUT_DIR/super.img.lz4"
 RAW_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-super-only.tar"
 ODIN_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-odin.tar"
+ODIN_MD5_TAR_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-odin.tar.md5"
 BOOT_LZ4_OUT="$OUTPUT_DIR/boot.img.lz4"
 rm -f -- "$SUPER_OUT" "$SUPER_LZ4_OUT" "$RAW_TAR_OUT" "$ODIN_TAR_OUT" \
+  "$ODIN_MD5_TAR_OUT" \
   "$BOOT_LZ4_OUT" \
   "$OUTPUT_DIR/vbmeta.img.lz4" \
   "$OUTPUT_DIR/vbmeta_system.img.lz4" \
@@ -490,8 +492,11 @@ fi
 
 if [ "$VBMETA_READY" = "1" ]; then
   tar -H ustar -cf "$ODIN_TAR_OUT" -C "$OUTPUT_DIR" "${ODIN_MEMBERS[@]}"
+  ODIN_MD5=$(md5sum "$ODIN_TAR_OUT" | cut -d' ' -f1)
+  cat "$ODIN_TAR_OUT" > "$ODIN_MD5_TAR_OUT"
+  printf '%s' "$ODIN_MD5" >> "$ODIN_MD5_TAR_OUT"
   ODIN_MEMBER_LIST=$(IFS=', '; echo "${ODIN_MEMBERS[*]}")
-  ODIN_STATUS="Created: $(basename "$ODIN_TAR_OUT") (${ODIN_MEMBER_LIST})"
+  ODIN_STATUS="Created: $(basename "$ODIN_TAR_OUT") and $(basename "$ODIN_MD5_TAR_OUT") (${ODIN_MEMBER_LIST})"
 fi
 
 cat > "$OUTPUT_DIR/${OUTPUT_NAME}.build-info.txt" <<EOF
@@ -506,6 +511,7 @@ Replaced: system logical partition only
 Raw super tar: $(basename "$RAW_TAR_OUT")
 Samsung LZ4 image: $(basename "$SUPER_LZ4_OUT")
 Odin package: $ODIN_STATUS
+Odin MD5: $([ -s "$ODIN_MD5_TAR_OUT" ] && md5sum "$ODIN_TAR_OUT" | cut -d' ' -f1 || echo none)
 Boot image: $BOOT_STATUS
 Removed logical partitions: ${REMOVED_PARTITIONS[*]:-none}
 AVB images: ${VBMETA_NAMES[*]:-none}; patched flags include 0x03 only for matching AP images
@@ -514,6 +520,7 @@ EOF
 
 echo "==> [SAMSUNG-SUPER] Raw package:    $RAW_TAR_OUT"
 echo "==> [SAMSUNG-SUPER] Odin package:   ${ODIN_TAR_OUT} (if matching AP vbmeta was found)"
+echo "==> [SAMSUNG-SUPER] Odin MD5 package: ${ODIN_MD5_TAR_OUT} (if matching AP vbmeta was found)"
 echo "==> [SAMSUNG-SUPER] Super image:    $SUPER_OUT"
 echo "==> [SAMSUNG-SUPER] Samsung image:  $SUPER_LZ4_OUT"
 echo "==> [SAMSUNG-SUPER] Validation passed: system partition present"
