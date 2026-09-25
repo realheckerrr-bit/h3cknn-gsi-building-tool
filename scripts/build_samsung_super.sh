@@ -6,8 +6,9 @@
 # It never invents or modifies boot, vendor, odm, recovery, or kernel.  When an
 # AP archive is supplied, it creates a separate Odin package containing
 # Samsung-format LZ4 super plus the AP's matching vbmeta with AVB disable bits.
-# An explicitly supplied exact-device boot image can be added as an optional
-# package member for devices that need a custom GSI-compatible kernel.
+# A matching AP boot image is carried automatically when an AP archive is
+# supplied. An explicitly supplied exact-device boot image overrides it for
+# devices that need a custom GSI-compatible kernel.
 # ============================================================================
 
 set -Eeuo pipefail
