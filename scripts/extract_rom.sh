@@ -67,6 +67,11 @@ if echo "$DOWNLOADED_TYPE" | grep -Eiq 'html document|html,|empty$'; then
   exit 1
 fi
 
+# Always retain an absolute source path. The master pipeline may be called from
+# a relative work directory, while later preservation must still find the
+# downloaded file after this script changes directory.
+ROM_FILE="$(realpath "$ROM_FILE")"
+
 # Keep the resolved local input path available to the master pipeline.  Direct
 # GSI inputs can be passed through without mounting and rebuilding them, which
 # preserves sparse-image layout and other boot-sensitive metadata.
@@ -81,6 +86,27 @@ FILE_TYPE=$(file -b "$ROM_FILE" | tr '[:upper:]' '[:lower:]')
 FILE_EXT="${ROM_FILE##*.}"
 FILE_EXT=$(echo "$FILE_EXT" | cut -d'?' -f1 | tr '[:upper:]' '[:lower:]')
 FILE_MAGIC=$(od -An -tx1 -N4 "$ROM_FILE" 2>/dev/null | tr -d '[:space:]' || true)
+
+# A recognized compressed/raw GSI does not need to be mounted and copied: the
+# porting stage intentionally preserves it byte-for-byte. Extract only
+# build.prop so compatibility reporting still works, then let port_rom.sh take
+# its normal preservation path. If the image is EROFS or the marker is
+# ambiguous, fall through to the full extractor below.
+DIRECT_GSI_HINT=0
+if printf '%s\n%s' "$(basename "$ROM_FILE")" "$ROM_URL" \
+  | grep -Eiq '(^|[-_/?.])(gsi|treble|arm64|a64[-_.][ab][a-z][a-z]?n)([-_.?/]|$)'; then
+  DIRECT_GSI_HINT=1
+fi
+DIRECT_IMAGE_TYPE=$(file -b "$ROM_FILE" | tr '[:upper:]' '[:lower:]')
+if [ "$DIRECT_GSI_HINT" = "1" ] \
+  && { printf '%s' "$DIRECT_IMAGE_TYPE" | grep -Eiq \
+       'xz compressed|gzip compressed|filesystem|android sparse image' \
+       || [ "$FILE_EXT" = "xz" ] || [ "$FILE_EXT" = "gz" ]; }; then
+  if bash "$SCRIPT_DIR/extract_direct_gsi_prop.sh" \
+    "$ROM_FILE" "$OUTPUT_DIR" "$WORK_DIR"; then
+    exit 0
+  fi
+fi
 
 # Google Drive downloads are deliberately saved without the original extension.
 # Detect ZIP containers from their magic bytes so an OTA ZIP is not mistaken for

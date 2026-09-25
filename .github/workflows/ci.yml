@@ -27,6 +27,12 @@ jobs:
       - name: "GSI compatibility preflight"
         run: bash scripts/test_gsi_compatibility.sh
 
+      - name: "Direct GSI property fast path"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends e2fsprogs
+          bash scripts/test_direct_gsi_preflight.sh
+
       - name: "📦 Direct and extensionless GSI preservation"
         run: |
           sudo apt-get update -qq
