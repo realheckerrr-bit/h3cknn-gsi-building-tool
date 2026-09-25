@@ -3,7 +3,7 @@
 
 set -Eeuo pipefail
 
-MARKER_REGEX='(^|[-_/?.])(gsi|treble|(arm64|a64)_[ab][a-z][a-z]?n)([-_.?/]|$)'
+MARKER_REGEX='(^|[-_/?.])(gsi|treble|(arm64|arm|a64)[-_.][ab][a-z][a-z]?n)([-_.?/]|$)'
 
 should_match() {
   if ! printf '%s\n' "$1" | grep -Eiq "$MARKER_REGEX"; then

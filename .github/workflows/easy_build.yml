@@ -177,7 +177,7 @@ jobs:
             | Format | `${{ github.event.inputs.gsi_type }}` |
             | Image mode | See `build-info.txt` |
             | DSU signing | Community GSI; installer/device must accept it |
-            | Architecture | ARM64 A/B (Treble) |
+            | ABI profile | Auto-detected from the source GSI/system properties |
             | Runner | Ubuntu Latest |
 
             ### ⚡ How to use
