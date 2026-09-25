@@ -42,7 +42,15 @@ echo "==> [REPACK] Target format: $FS_TYPE"
 
 if [ "$FS_TYPE" = "erofs" ]; then
   echo "==> [REPACK] Building EROFS image with mkfs.erofs..."
-  mkfs.erofs -z lz4hc "$SPARSE_IMG" "$SYSTEM_ROOT"
+  # Ubuntu/Debian erofs-utils versions expose either lz4hc or only lz4.
+  # Retry with the portable compressor instead of leaving a partial image
+  # behind when a runner has an older userspace tool.
+  rm -f -- "$SPARSE_IMG"
+  if ! mkfs.erofs -z lz4hc "$SPARSE_IMG" "$SYSTEM_ROOT"; then
+    echo "  [!] lz4hc is unavailable; retrying EROFS build with lz4"
+    rm -f -- "$SPARSE_IMG"
+    mkfs.erofs -z lz4 "$SPARSE_IMG" "$SYSTEM_ROOT"
+  fi
   # No sparse conversion needed for EROFS
 else
   echo "==> [REPACK] Calculating partition size..."
