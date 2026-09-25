@@ -84,15 +84,23 @@ done
 IS_EXISTING_GSI=0
 if [ "${FORCE_REPACK_GSI:-0}" != "1" ] && [ -n "$SOURCE_INPUT" ]; then
   SOURCE_BASENAME=$(basename "$SOURCE_INPUT" | tr '[:upper:]' '[:lower:]')
+  SOURCE_FILE_TYPE=$(file -b "$SOURCE_INPUT" | tr '[:upper:]' '[:lower:]')
+  DIRECT_IMAGE_INPUT=0
+  if printf '%s' "$SOURCE_FILE_TYPE" | grep -Eiq \
+    'xz compressed|gzip compressed|filesystem|android sparse image'; then
+    DIRECT_IMAGE_INPUT=1
+  fi
   # Some community GSIs do not carry ro.treble.enabled in the extracted
   # build.prop even though their filename/variant is unambiguous.  Require a
   # direct image input plus either a generic device marker or a recognized GSI
-  # variant marker; do not rely on one property alone.  The filename/URL test
-  # remains independent of BUILD_PROP: metadata permissions or an unusual
-  # system-as-root layout must never force a known GSI through the destructive
-  # OEM unpack/repack path.
-  if { [ -f "$BUILD_PROP" ] && grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP"; } \
-    || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" | grep -Eiq '(^|[-_/?.])(gsi|treble|(arm64|a64)_[ab][a-z][a-z]?n)([-_.?/]|$)'; then
+  # variant marker. Archives/AP files containing the word "gsi" must never be
+  # routed through passthrough mode, because that would skip OEM extraction
+  # and produce the wrong system image.
+  if [ "$DIRECT_IMAGE_INPUT" = "1" ] \
+    && { { [ -f "$BUILD_PROP" ] \
+      && grep -Eiq '^ro\.product\.(system\.)?device=(generic|mainline|gsi)' "$BUILD_PROP"; } \
+      || printf '%s\n%s' "$SOURCE_BASENAME" "$ROM_URL" \
+        | grep -Eiq '(^|[-_/?.])(gsi|treble|(arm64|a64)_[ab][a-z][a-z]?n)([-_.?/]|$)'; }; then
     IS_EXISTING_GSI=1
   fi
 fi

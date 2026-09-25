@@ -26,4 +26,12 @@ should_match "https://example.invalid/releases/gsi/system.img.xz"
 should_not_match "Samsung-OneUI-stock-M127F.img.xz"
 should_not_match "vendor-arm64-device.img.xz"
 
+# The URL marker alone must not classify an archive/AP as a direct GSI. The
+# porting engine additionally requires the downloaded file to be an image or
+# compressed image before it enters passthrough mode.
+if printf '%s' 'Zip archive data' | grep -Eiq 'xz compressed|gzip compressed|filesystem|android sparse image'; then
+  echo "[-] Archive type incorrectly qualifies as a direct GSI image." >&2
+  exit 1
+fi
+
 echo "==> GSI filename detection tests passed."
