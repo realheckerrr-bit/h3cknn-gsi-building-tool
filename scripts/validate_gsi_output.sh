@@ -135,7 +135,9 @@ elif [ "$IMAGE_KIND" = "erofs" ]; then
     echo "[-] ERROR: EROFS GSI does not contain build.prop at a supported system path." >&2
     exit 1
   fi
-  cp -- "$CONTRACT_DIR/$BUILD_PROP_PATH" "$CONTRACT_DIR/build.prop"
+  if [ "$BUILD_PROP_PATH" != "build.prop" ]; then
+    cp -- "$CONTRACT_DIR/$BUILD_PROP_PATH" "$CONTRACT_DIR/build.prop"
+  fi
 fi
 
 if ! grep -Eq '^[[:space:]]*ro\.treble\.enabled=(true|1)[[:space:]]*$' \
