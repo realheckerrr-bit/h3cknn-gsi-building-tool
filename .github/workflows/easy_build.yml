@@ -180,10 +180,12 @@ jobs:
             | Runner | Ubuntu Latest |
 
             ### ⚡ How to use
-            - **Samsung Galaxy M12:** do not use fastboot commands. Use the Samsung
-              stock-super workflow with the exact matching AP firmware, or follow
-              the exact TWRP/kernel/multidisabler procedure for your model.
-             - **DSU:** the `.img.gz` asset is in DSU format, but installation still
+            - **Device-specific boot chain:** the GSI contains system userspace
+              only. Keep the target device's compatible vendor, kernel/boot, DTB,
+              vbmeta, recovery, and documented installation method. Samsung users
+              must use the exact-model stock-super/AP or TWRP workflow; this is
+              not a universal Odin package.
+            - **DSU:** the `.img.gz` asset is in DSU format, but installation still
                requires a working Android system, an unlocked bootloader, enough free
                storage, and an installer/device that accepts community non-OEM-signed images.
             - **Other devices:** follow that device's documented GSI installation

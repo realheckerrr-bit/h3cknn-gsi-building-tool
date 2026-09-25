@@ -165,11 +165,12 @@ jobs:
             - **Built on**: Run ${{ github.run_id }}
 
             ### ⚡ Flashing
-            Use the generated `.img.xz` or `.img.gz` with the documented method
-            for the target device. Samsung Galaxy M12 users must use the exact
-            stock AP/super/vbmeta workflow or matching TWRP/kernel procedure;
-            these images are not universal Odin packages and must not be flashed
-            with generic fastboot commands.
+            Use the generated `.img.xz` or `.img.gz` with the documented GSI
+            method for the target device. A generic GSI contains the system
+            userspace only; every device still needs its own compatible vendor,
+            kernel/boot, DTB, vbmeta, recovery, and installation procedure.
+            These images are not universal Odin packages and must not be flashed
+            with generic fastboot commands on devices that do not support it.
           files: |
             ${{ github.workspace }}/android_source/out_gsi/*.img.xz
             ${{ github.workspace }}/android_source/out_gsi/*.img.gz
