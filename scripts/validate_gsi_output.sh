@@ -152,7 +152,7 @@ if ! [[ "$SDK_VALUE" =~ ^[0-9]+$ ]] || [ "$SDK_VALUE" -lt 29 ]; then
 fi
 
 INIT_FOUND=0
-for candidate in /init /system/bin/init /system/system/bin/init; do
+for candidate in /init /bin/init /system/bin/init /system/system/bin/init; do
   if has_file "$candidate"; then
     INIT_FOUND=1
     break
