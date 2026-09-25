@@ -36,6 +36,11 @@ on:
         options:
           - "userdebug"
           - "user"
+      target_model:
+        description: "Optional target model for compatibility warnings (example: SM-M127F)"
+        required: false
+        default: "generic"
+        type: string
 
 jobs:
   build_source_gsi:
@@ -90,11 +95,18 @@ jobs:
           MANIFEST_URL_INPUT: ${{ inputs.manifest_url }}
           MANIFEST_BRANCH_INPUT: ${{ inputs.manifest_branch }}
           TREBLE_BRANCH_INPUT: ${{ inputs.treble_branch }}
+          TARGET_MODEL_INPUT: ${{ inputs.target_model }}
         run: |
           # BUG FIX: path must be absolute or relative to GITHUB_WORKSPACE
           bash scripts/validate_gsi_output.sh \
             "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.xz \
             "$GITHUB_WORKSPACE"/android_source/out_gsi/*.img.gz
+          BUILD_PROP=$(find "$GITHUB_WORKSPACE/android_source/out/target/product" \
+            -type f -name build.prop -print -quit 2>/dev/null || true)
+          bash scripts/check_gsi_compatibility.sh \
+            "$BUILD_PROP" \
+            "$TARGET_MODEL_INPUT" \
+            "$GITHUB_WORKSPACE/android_source/out_gsi/compatibility-report.txt"
           cd "$GITHUB_WORKSPACE/android_source/out_gsi"
           sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
           IMAGE_XZ=$(find . -maxdepth 1 -type f -name '*.img.xz' -print -quit)
@@ -111,6 +123,9 @@ jobs:
           Image mode: source-built
           DSU signing: Community GSI; not signed with a Samsung/Google OEM key
           Target architecture: ARM64 A/B Treble GSI
+          Target model: $TARGET_MODEL_INPUT
+          Compatibility preflight:
+          $(cat compatibility-report.txt)
           Commit: $GITHUB_SHA
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           Built at UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -130,6 +145,7 @@ jobs:
             ${{ github.workspace }}/android_source/out_gsi/*.img.gz
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
             ${{ github.workspace }}/android_source/out_gsi/build-info.txt
+            ${{ github.workspace }}/android_source/out_gsi/compatibility-report.txt
           retention-days: 7
 
       - name: "🏷️ Create GitHub Release"
@@ -159,6 +175,7 @@ jobs:
             ${{ github.workspace }}/android_source/out_gsi/*.img.gz
             ${{ github.workspace }}/android_source/out_gsi/SHA256SUMS.txt
             ${{ github.workspace }}/android_source/out_gsi/build-info.txt
+            ${{ github.workspace }}/android_source/out_gsi/compatibility-report.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -173,6 +190,7 @@ jobs:
           TELEGRAM_BUILD_TYPE: ${{ inputs.build_type }}
           TELEGRAM_MANIFEST_BRANCH: ${{ inputs.manifest_branch }}
           TELEGRAM_TREBLE_BRANCH: ${{ inputs.treble_branch }}
+          TELEGRAM_TARGET_MODEL: ${{ inputs.target_model }}
         run: |
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "Telegram secrets are not configured; skipping notification."
@@ -186,10 +204,13 @@ jobs:
           TELEGRAM_BUILD_TYPE_ESCAPED=$(printf '%s' "$TELEGRAM_BUILD_TYPE" | html_escape)
           TELEGRAM_MANIFEST_BRANCH_ESCAPED=$(printf '%s' "$TELEGRAM_MANIFEST_BRANCH" | html_escape)
           TELEGRAM_TREBLE_BRANCH_ESCAPED=$(printf '%s' "$TELEGRAM_TREBLE_BRANCH" | html_escape)
-          TELEGRAM_TEXT=$(printf '<b>%s Source GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nVariant: %s\nBuild type: %s\nManifest branch: %s\nTreble branch: %s\nDSU signing: Community GSI; installer/device must accept community GSI signatures\nCommit: %s\n</blockquote>' \
+          TELEGRAM_TARGET_MODEL_ESCAPED=$(printf '%s' "$TELEGRAM_TARGET_MODEL" | html_escape)
+          TELEGRAM_COMPATIBILITY=$(grep -m1 '^Status:' android_source/out_gsi/compatibility-report.txt | cut -d: -f2- | xargs | html_escape)
+          TELEGRAM_TEXT=$(printf '<b>%s Source GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nVariant: %s\nBuild type: %s\nManifest branch: %s\nTreble branch: %s\nTarget model: %s\nCompatibility: %s\nDSU signing: Community GSI; installer/device must accept community GSI signatures\nCommit: %s\n</blockquote>' \
             "$TELEGRAM_GSI_NAME_ESCAPED" "$RELEASE_URL" "$TELEGRAM_GSI_NAME_ESCAPED" \
             "$TELEGRAM_BUILD_TYPE_ESCAPED" "$TELEGRAM_MANIFEST_BRANCH_ESCAPED" \
-            "$TELEGRAM_TREBLE_BRANCH_ESCAPED" "$GITHUB_SHA")
+            "$TELEGRAM_TREBLE_BRANCH_ESCAPED" "$TELEGRAM_TARGET_MODEL_ESCAPED" \
+            "$TELEGRAM_COMPATIBILITY" "$GITHUB_SHA")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \

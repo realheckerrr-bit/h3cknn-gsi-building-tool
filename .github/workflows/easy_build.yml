@@ -26,6 +26,11 @@ on:
         options:
           - "ext4 (most compatible)"
           - "erofs (smaller size)"
+      target_model:
+        description: "Optional target model for compatibility warnings (example: SM-M127F)"
+        required: false
+        default: "generic"
+        type: string
 
 jobs:
   easy_build:
@@ -43,6 +48,7 @@ jobs:
           ROM_URL_INPUT: ${{ inputs.rom_url }}
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
           GSI_TYPE_INPUT: ${{ inputs.gsi_type }}
+          TARGET_MODEL_INPUT: ${{ inputs.target_model }}
         run: |
           echo "=================================================="
           echo "  ⚡ h3cknn Easy GSI Builder"
@@ -90,6 +96,7 @@ jobs:
           ROM_URL_INPUT: ${{ inputs.rom_url }}
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
           GSI_TYPE_INPUT: ${{ inputs.gsi_type }}
+          TARGET_MODEL_INPUT: ${{ inputs.target_model }}
         run: |
           bash scripts/validate_gsi_output.sh workspace/output/*.img.xz workspace/output/*.img.gz
           cd workspace/output
@@ -99,6 +106,23 @@ jobs:
           RAW_IMAGE_BYTES=$(xz --robot --list "$IMAGE_XZ" | awk -F '\t' '$1 == "totals" { print $5 }')
           FS_RAW="$GSI_TYPE_INPUT"
           FS_TYPE="${FS_RAW%%\ *}"
+          BUILD_PROP=""
+          for candidate in \
+            ../system_root/system/build.prop \
+            ../system_root/system/system/build.prop \
+            ../system_root/build.prop; do
+            if [ -f "$candidate" ]; then
+              BUILD_PROP="$candidate"
+              break
+            fi
+          done
+          if [ -z "$BUILD_PROP" ]; then
+            BUILD_PROP=$(find ../system_root -maxdepth 4 -type f -name build.prop -print -quit)
+          fi
+          bash ../../scripts/check_gsi_compatibility.sh \
+            "$BUILD_PROP" \
+            "$TARGET_MODEL_INPUT" \
+            compatibility-report.txt
           cat > build-info.txt <<EOF
           GSI build report
           ================
@@ -108,6 +132,9 @@ jobs:
           DSU signing: Community GSI; not signed with a Samsung/Google OEM key
           Requested filesystem: ${FS_TYPE}
           Target architecture: ARM64 A/B Treble GSI
+          Target model: $TARGET_MODEL_INPUT
+          Compatibility preflight:
+          $(cat compatibility-report.txt)
           Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           Raw image size: ${RAW_IMAGE_BYTES} bytes
           EOF
@@ -132,6 +159,7 @@ jobs:
             workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
+            workspace/output/compatibility-report.txt
           retention-days: 14
 
       - name: "🏷️ Publish Release"
@@ -165,6 +193,7 @@ jobs:
             workspace/output/*.img.gz
             workspace/output/SHA256SUMS.txt
             workspace/output/build-info.txt
+            workspace/output/compatibility-report.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -176,6 +205,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          TARGET_MODEL_INPUT: ${{ inputs.target_model }}
         run: |
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "Telegram secrets are not configured; skipping notification."
@@ -190,11 +220,14 @@ jobs:
           TELEGRAM_FILESYSTEM=$(grep -m1 '^Requested filesystem:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
           TELEGRAM_RAW_SIZE=$(grep -m1 '^Raw image size:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
           TELEGRAM_SOURCE=$(grep -m1 '^Source ROM:' workspace/output/build-info.txt | cut -d: -f2- | xargs | html_escape)
+          TELEGRAM_TARGET_MODEL=$(printf '%s' "$TARGET_MODEL_INPUT" | html_escape)
+          TELEGRAM_COMPATIBILITY=$(grep -m1 '^Status:' workspace/output/compatibility-report.txt | cut -d: -f2- | xargs | html_escape)
           TELEGRAM_COMMIT=$(printf '%s' "$GITHUB_SHA" | html_escape)
-          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nImage mode: %s\nFilesystem: %s\nRaw image size: %s\nSource ROM: %s\nCommit: %s\nRun: %s</blockquote>' \
+          TELEGRAM_TEXT=$(printf '<b>%s (Treble GSI)</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\nImage mode: %s\nFilesystem: %s\nRaw image size: %s\nSource ROM: %s\nTarget model: %s\nCompatibility: %s\nCommit: %s\nRun: %s</blockquote>' \
             "$TELEGRAM_GSI_NAME" "$RELEASE_URL" "$TELEGRAM_IMAGE_MODE" \
             "$TELEGRAM_FILESYSTEM" "$TELEGRAM_RAW_SIZE" "$TELEGRAM_SOURCE" \
-            "$TELEGRAM_COMMIT" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+            "$TELEGRAM_TARGET_MODEL" "$TELEGRAM_COMPATIBILITY" "$TELEGRAM_COMMIT" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
           if ! curl --fail --silent --show-error --request POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
