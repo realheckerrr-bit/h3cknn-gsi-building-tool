@@ -14,7 +14,7 @@ ro.build.description=test-device-user 14 UP1A release-keys
 ro.debuggable=0
 EOF
 
-TREBLE_OVERLAY_URL= TREBLE_APP_URL= \
+REMOVE_OEM_BLOAT=1 TREBLE_OVERLAY_URL= TREBLE_APP_URL= \
   bash "$ROOT_DIR/scripts/patch_treble.sh" "$TEST_DIR" generic >/dev/null
 
 grep -Fx 'ro.treble.enabled=true' "$TEST_DIR/system/build.prop" >/dev/null

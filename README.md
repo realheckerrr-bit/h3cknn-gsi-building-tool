@@ -19,7 +19,7 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
 - **Treble Compatibility Layer:**
   - Injects only the conservative Treble properties required by the system image; device/vendor heap, graphics, USB, radio, codec, AVB, and encryption settings are preserved.
   - Does not claim to disable AVB, dm-verity, or Samsung encryption: those are controlled by device vbmeta, vendor, boot, and recovery components.
-  - Disables OEM-specific proprietary daemons that crash without stock vendor HALs (`knox`, `vaultkeeper`, `miui_daemon`, `faceunlock`).
+  - Disables only known OEM init daemons that can crash without matching vendor HALs (`knox`, `vaultkeeper`, `miui_daemon`, `faceunlock`); OEM applications are preserved unless `REMOVE_OEM_BLOAT=1` is explicitly set.
   - Can inject a supplied **Treble hardware overlay** (`TREBLE_OVERLAY_URL`) for adaptive brightness, cutouts, and status bar padding; no overlay is fabricated when the URL is absent.
   - Can inject a supplied **TrebleApp APK** (`TREBLE_APP_URL`) for hardware toggles; this is an optional app, not a universal kernel driver.
   - Preserves device-specific vendor HALs, kernel modules, DTB, and boot ramdisk instead of pretending they are universal system files.

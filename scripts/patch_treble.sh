@@ -182,8 +182,13 @@ for IDIR in "${INIT_DIRS[@]}"; do
   fi
 done
 
-# 4. Remove OEM bloatware that hinders GSI booting
-echo "==> [TREBLE-PATCH] Removing vendor-locked bloatware..."
+# 4. Remove OEM bloatware only when explicitly requested. These packages are
+# not universal drivers; deleting similarly named apps from an arbitrary OEM
+# image can remove telephony, setup, or device-specific functionality.
+if [ "${REMOVE_OEM_BLOAT:-0}" != "1" ]; then
+  echo "  [!] Preserving OEM applications (set REMOVE_OEM_BLOAT=1 to opt in)"
+else
+  echo "==> [TREBLE-PATCH] Removing vendor-locked bloatware (opt-in)..."
 REMOVE_TARGETS=(
   "priv-app/Velvet"
   "priv-app/GoogleFeedback"
@@ -200,6 +205,7 @@ for TARGET in "${REMOVE_TARGETS[@]}"; do
     "${SUDO[@]}" rm -rf "$SYSTEM_PARTITION_ROOT/$TARGET"
   fi
 done
+fi
 
 # 5. Inject Treble Overlays
 # BUG FIX: treble-overlay.apk and TrebleApp.apk have NO GitHub Releases page.
