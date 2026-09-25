@@ -100,6 +100,9 @@ jobs:
               "$OUTPUT_NAME_INPUT" \
               workspace/samsung-work \
               workspace/output
+          bash scripts/verify_samsung_package.sh \
+            workspace/output \
+            "$OUTPUT_NAME_INPUT"
           cd workspace/output
           find . -maxdepth 1 -type f \( -name '*.tar' -o -name '*.img' -o -name '*.img.lz4' -o -name '*.build-info.txt' \) -print0 \
             | sort -z | xargs -0 sha256sum > SHA256SUMS.txt

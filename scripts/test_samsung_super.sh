@@ -124,6 +124,8 @@ SAMSUNG_BOOT_INPUT="$TEST_DIR/boot.img" \
     smoke-ap \
     "$TEST_DIR/work-ap" \
     "$TEST_DIR/output-ap"
+bash "$ROOT_DIR/scripts/verify_samsung_package.sh" \
+  "$TEST_DIR/output-ap" smoke-ap >/dev/null
 [ -s "$TEST_DIR/output-ap/smoke-ap-odin.tar" ]
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'super.img.lz4' >/dev/null
 tar -tf "$TEST_DIR/output-ap/smoke-ap-odin.tar" | grep -Fx 'vbmeta.img.lz4' >/dev/null
@@ -165,6 +167,8 @@ SAMSUNG_DEVICE_MODEL=SM-M127F \
     smoke-ap-auto \
     "$TEST_DIR/work-ap-auto" \
     "$TEST_DIR/output-ap-auto"
+bash "$ROOT_DIR/scripts/verify_samsung_package.sh" \
+  "$TEST_DIR/output-ap-auto" smoke-ap-auto >/dev/null
 tar -tf "$TEST_DIR/output-ap-auto/smoke-ap-auto-odin.tar" \
   | grep -Fx 'boot.img.lz4' >/dev/null
 grep -F 'Removed logical partitions: product' \
