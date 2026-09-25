@@ -20,8 +20,9 @@ Designed to run completely on **GitHub Actions** (with free Ubuntu runners and h
   - Injects universal `ro.treble.enabled` properties and generic Dalvik heaps.
   - Does not claim to disable AVB, dm-verity, or Samsung encryption: those are controlled by device vbmeta, vendor, boot, and recovery components.
   - Disables OEM-specific proprietary daemons that crash without stock vendor HALs (`knox`, `vaultkeeper`, `miui_daemon`, `faceunlock`).
-  - Injects **Treble hardware overlays** (`treble-overlay.apk`) for adaptive brightness, cutouts, and status bar padding.
-  - Injects **TrebleApp** (`packages/apps/TrebleApp`) for hardware toggles (VoLTE, fingerprint scanner, high refresh rates).
+  - Can inject a supplied **Treble hardware overlay** (`TREBLE_OVERLAY_URL`) for adaptive brightness, cutouts, and status bar padding; no overlay is fabricated when the URL is absent.
+  - Can inject a supplied **TrebleApp APK** (`TREBLE_APP_URL`) for hardware toggles; this is an optional app, not a universal kernel driver.
+  - Preserves device-specific vendor HALs, kernel modules, DTB, and boot ramdisk instead of pretending they are universal system files.
   - Detects direct community GSI inputs and preserves their original sparse/filesystem layout instead of unpacking and rebuilding them. Set `FORCE_REPACK_GSI=1` only when deliberately converting an OEM system image.
   - The OEM repack path is experimental; it cannot create a complete bootable Samsung ROM without the matching device vendor, boot image/kernel, vbmeta, and recovery setup.
   - Provides an opt-in Samsung stock-super workflow that replaces only `system` while preserving logical partitions from a matching stock super/AP image.
