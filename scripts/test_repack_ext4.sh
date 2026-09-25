@@ -32,6 +32,7 @@ bash "$ROOT_DIR/scripts/validate_gsi_output.sh" \
 
 RAW_IMAGE="$TEST_DIR/repack-smoke.raw.img"
 gzip -dc "$OUTPUT_DIR/repack-smoke.img.gz" > "$RAW_IMAGE"
-debugfs -R 'stat /build.prop' "$RAW_IMAGE" 2>/dev/null | grep -F 'File size' >/dev/null
+debugfs -R 'cat /build.prop' "$RAW_IMAGE" 2>/dev/null \
+  | grep -F 'ro.treble.enabled=true' >/dev/null
 
 echo "==> ext4 repack integration test passed."
