@@ -21,6 +21,9 @@ jobs:
       - name: "🧭 Direct GSI detection"
         run: bash scripts/test_gsi_detection.sh
 
+      - name: "Safe Treble property patching"
+        run: bash scripts/test_treble_patch.sh
+
       - name: "📦 Direct and extensionless GSI preservation"
         run: |
           sudo apt-get update -qq

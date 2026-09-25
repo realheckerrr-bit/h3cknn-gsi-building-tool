@@ -102,7 +102,9 @@ fi
 # 2. Patch essential Treble flags
 set_prop "ro.treble.enabled" "true"
 set_prop "ro.apex.updatable" "false"
-set_prop "ro.debuggable" "1"
+# Do not force ro.debuggable. Debug/user builds require matching boot ramdisk
+# and SELinux policy; changing this property cannot provide universal drivers
+# and can cause boot failures.
 
 # 2b. Stamp h3cknnGSI_tool branding into the Android build number
 # Result in Settings > About Phone > Build Number:

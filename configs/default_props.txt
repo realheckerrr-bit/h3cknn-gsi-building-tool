@@ -4,8 +4,9 @@
 
 # Core Project Treble compatibility
 ro.treble.enabled=true
-persist.sys.phh.no_stock_apps=true
-persist.sys.usb.config=mtp,adb
+# Do not force PHH-only or USB transport properties. Vendor init/USB HALs own
+# those settings and differ across devices; overriding them is not a universal
+# driver and can break first boot or recovery access.
 
 # Generic Dalvik Heap Configuration for Universal Device RAM
 dalvik.vm.heapstartsize=8m
