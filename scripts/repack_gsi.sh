@@ -12,6 +12,14 @@ FS_TYPE="${3:-ext4}"
 WORK_DIR="$(pwd)/workspace"
 OUTPUT_DIR="$WORK_DIR/output"
 
+case "$FS_TYPE" in
+  ext4|erofs) ;;
+  *)
+    echo "[-] ERROR: Filesystem must be exactly ext4 or erofs (got: $FS_TYPE)." >&2
+    exit 2
+    ;;
+esac
+
 OUTPUT_NAME=$(printf '%s' "$REQUESTED_OUTPUT_NAME" \
   | sed -E 's/[^A-Za-z0-9._-]+/_/g; s/^[.-]+//; s/[.-]+$//')
 [ -n "$OUTPUT_NAME" ] || OUTPUT_NAME="system-treble-arm64"

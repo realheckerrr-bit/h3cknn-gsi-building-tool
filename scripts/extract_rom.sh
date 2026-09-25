@@ -58,6 +58,15 @@ fi
 
 echo "==> [EXTRACT] Downloaded file: $(basename "$ROM_FILE") ($(du -h "$ROM_FILE" | cut -f1))"
 
+# Direct ROM links often return an HTML login/404 page with HTTP 200. Catch it
+# here so the later image parser reports the real download problem instead of
+# producing a misleading payload/system.img failure.
+DOWNLOADED_TYPE=$(file -b "$ROM_FILE" | tr '[:upper:]' '[:lower:]')
+if echo "$DOWNLOADED_TYPE" | grep -Eiq 'html document|html,|empty$'; then
+  echo "[-] ERROR: Downloaded input is not a ROM/image ($DOWNLOADED_TYPE)." >&2
+  exit 1
+fi
+
 # Keep the resolved local input path available to the master pipeline.  Direct
 # GSI inputs can be passed through without mounting and rebuilding them, which
 # preserves sparse-image layout and other boot-sensitive metadata.

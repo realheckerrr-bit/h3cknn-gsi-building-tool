@@ -11,6 +11,15 @@ MANIFEST_BRANCH="${2:-lineage-21.0}"
 TREBLE_BRANCH="${3:-android-14.0}"
 WORK_DIR="${4:-$(pwd)/source_tree}"
 
+# The value is inserted into an XML manifest. Keep the workflow input to a
+# branch/tag/ref rather than allowing malformed XML or shell-hostile text.
+case "$TREBLE_BRANCH" in
+  ''|*[!A-Za-z0-9._/-]*)
+    echo "[-] ERROR: TREBLE_BRANCH contains unsupported characters: $TREBLE_BRANCH" >&2
+    exit 2
+    ;;
+esac
+
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
