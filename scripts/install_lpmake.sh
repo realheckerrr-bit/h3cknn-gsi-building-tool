@@ -63,8 +63,18 @@ for i in "${!LPMake_URLS[@]}"; do
     echo "  [!] lpmake source unavailable; trying the next pinned source" >&2
     continue
   fi
-  if ! base64 --decode "$TEMP_DIR/lpmake.b64" > "$TEMP_FILE" || [ ! -s "$TEMP_FILE" ]; then
-    echo "  [!] lpmake source could not be decoded; trying the next pinned source" >&2
+  if [[ "${LPMake_URLS[$i]}" == *"format=TEXT"* ]]; then
+    if ! base64 --decode "$TEMP_DIR/lpmake.b64" > "$TEMP_FILE"; then
+      echo "  [!] lpmake source could not be decoded; trying the next pinned source" >&2
+      continue
+    fi
+  else
+    # GitHub's raw fallback is already an ELF binary, not AOSP's base64
+    # transport representation.
+    cp -- "$TEMP_DIR/lpmake.b64" "$TEMP_FILE"
+  fi
+  if [ ! -s "$TEMP_FILE" ]; then
+    echo "  [!] lpmake source was empty; trying the next pinned source" >&2
     continue
   fi
   if [ -n "${LPMake_SHAS[$i]}" ] \

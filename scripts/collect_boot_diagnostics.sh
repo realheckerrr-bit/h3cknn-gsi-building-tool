@@ -49,7 +49,8 @@ adb_cmd logcat -b all -d -v threadtime > "$OUTPUT_DIR/logcat-all.txt" 2>&1 || tr
 adb_cmd bugreport "$OUTPUT_DIR/bugreport.zip" > "$OUTPUT_DIR/bugreport-command.txt" 2>&1 || true
 
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$OUTPUT_DIR"/* > "$OUTPUT_DIR/SHA256SUMS.txt" 2>/dev/null || true
+  find "$OUTPUT_DIR" -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' \
+    -print0 | sort -z | xargs -0 sha256sum > "$OUTPUT_DIR/SHA256SUMS.txt" 2>/dev/null || true
 fi
 
 echo "==> Boot diagnostics collected: $OUTPUT_DIR"
