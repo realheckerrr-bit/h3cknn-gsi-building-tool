@@ -58,7 +58,9 @@ jobs:
         run: bash scripts/clean_disk.sh
 
       - name: Install dependencies
-        run: bash scripts/setup_deps.sh
+        run: |
+          bash scripts/setup_deps.sh
+          bash scripts/install_lpmake.sh
 
       - name: Download matching stock and GSI inputs
         env:
