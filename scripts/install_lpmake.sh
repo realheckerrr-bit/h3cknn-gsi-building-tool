@@ -18,6 +18,10 @@ PRIMARY_LP_SHA256="276c0c8a046a69e6a2780e08835077119ad7129ddc59cbd12920ecba193d2
 FALLBACK_LP_SHA256="5413f722b60f2971bad343a28fb4c7f83984af8e3e13b5224b9ce99840527fde"
 PRIMARY_LIBLP_SHA256="af1f83237fed0c284d2c24ed6cf64381cf4e6cbe0e54f02c6299d5bb5dda0ec0"
 FALLBACK_LIBLP_SHA256="95221e036a664be40d67e07e0dfd026305f12390fdfa957d4aa3a3296bd519a3"
+# Last-resort statically linked fallback. The AOSP endpoints remain first;
+# this pinned mirror is used only when both Google sources are unavailable.
+STATIC_FALLBACK_COMMIT="da4dd13276e40d524286f343c4d59c7c5dfe8594"
+STATIC_FALLBACK_LP_SHA256="ea077cf98e2178828c9376a03d5dec0cc98b59458c2a0b94cda9e59b4218467a"
 
 if [ -n "${LPMake_URL:-}" ]; then
   LPMake_URLS=("$LPMake_URL")
@@ -26,8 +30,9 @@ else
   LPMake_URLS=(
     "https://android.googlesource.com/kernel/prebuilts/build-tools/+/$PRIMARY_COMMIT/linux-x86/bin/lpmake?format=TEXT"
     "https://android.googlesource.com/kernel/prebuilts/build-tools/+/$FALLBACK_COMMIT/linux-x86/bin/lpmake?format=TEXT"
+    "https://raw.githubusercontent.com/whyshhnuv/lpunpack-lpmake-mirror/$STATIC_FALLBACK_COMMIT/binary/lpmake"
   )
-  LPMake_SHAS=("$PRIMARY_LP_SHA256" "$FALLBACK_LP_SHA256")
+  LPMake_SHAS=("$PRIMARY_LP_SHA256" "$FALLBACK_LP_SHA256" "$STATIC_FALLBACK_LP_SHA256")
 fi
 
 if [ -n "${LIB_ARCHIVE_URL:-}" ]; then
@@ -75,6 +80,19 @@ if [ "$LPMake_READY" != "1" ]; then
   echo "[-] ERROR: No verified AOSP lpmake source could be downloaded." >&2
   exit 1
 fi
+
+# The pinned mirror binary is statically linked, so it does not need the
+# matching AOSP liblp/libbase archive. Install the same wrapper path so callers
+# do not need to know which source supplied the binary.
+if [ "${LPMake_SOURCE_INDEX:-0}" = "2" ]; then
+  AOSP_LIB_DIR="/usr/local/lib/h3cknn-gsi/aosp-lib64"
+  sudo install -d -m 0755 "$AOSP_LIB_DIR"
+  sudo install -m 0755 "$TEMP_FILE" "$AOSP_LIB_DIR/lpmake.bin"
+  sudo install -m 0755 "$(dirname "$(realpath "$0")")/lpmake_wrapper.sh" /usr/local/bin/lpmake
+  echo "  [+] static fallback lpmake installed at /usr/local/bin/lpmake"
+  exit 0
+fi
+
 ANDROID_LIB_DIR="$(dirname "$(find -L /usr/lib -type f -path '*/android/libbase.so' -print -quit)")"
 if [ -z "$ANDROID_LIB_DIR" ] || [ "$ANDROID_LIB_DIR" = "." ]; then
   echo "[-] ERROR: Ubuntu Android library directory was not found." >&2
