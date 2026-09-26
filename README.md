@@ -211,6 +211,20 @@ project cannot manufacture Samsung's signing key, so a community `.img.gz`
 may install only through a device/DSU-Sideloader mode that accepts unlocked or
 custom images; a failed DSU install is not evidence that the gzip is corrupt.
 
+### Collecting boot-failure evidence
+
+When Android boots but the GSI crashes, reboots, or loses hardware, collect
+device evidence before changing Treble settings:
+
+```bash
+bash scripts/collect_boot_diagnostics.sh [adb-serial] boot-diagnostics
+```
+
+The command is read-only and saves `getprop`, kernel/pstore logs, AVB and mount
+state, SELinux mode, overlays, all logcat buffers, and an optional bugreport.
+The resulting directory can be compressed and attached to an issue. It cannot
+replace the exact device kernel/vendor/DTB boot chain.
+
 ### Fastboot-based devices
 
 1. Extract the downloaded image:
