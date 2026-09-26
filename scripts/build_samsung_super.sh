@@ -454,6 +454,7 @@ fi
 # Accept a raw boot.img, Samsung boot.img.lz4, or an archive containing either.
 BOOT_INPUT="${SAMSUNG_BOOT_INPUT:-$AP_BOOT_SOURCE}"
 BOOT_INPUT_DESCRIPTION="matching AP stock boot image"
+BOOT_OVERRIDE_AUX_SOURCES=()
 if [ -n "${SAMSUNG_BOOT_INPUT:-}" ]; then
   BOOT_INPUT_DESCRIPTION="explicit exact-device boot input"
 fi
@@ -473,6 +474,22 @@ if [ -n "$BOOT_INPUT" ]; then
       echo "[-] ERROR: Boot archive does not contain boot.img or boot.img.lz4." >&2
       exit 1
     fi
+    # A custom kernel bundle may also carry the matching DTB/vendor ramdisk
+    # chain. Prefer those files over stock AP auxiliaries; mixing a custom
+    # boot image with an incompatible vendor_boot or dtbo is a common bootloop
+    # cause. Keep Samsung-compressed auxiliary members for the Odin path.
+    mapfile -t BOOT_OVERRIDE_AUX_SOURCES < <(
+      find "$BOOT_DIR" -type f \( \
+        -name 'dtbo.img.lz4' \
+        -o -name 'dtbo.img' \
+        -o -name 'vendor_boot.img.lz4' \
+        -o -name 'vendor_boot.img' \
+        -o -name 'init_boot.img.lz4' \
+        -o -name 'init_boot.img' \
+        -o -name 'recovery.img.lz4' \
+        -o -name 'recovery.img' \
+      \) -print | sort
+    )
     BOOT_TYPE=$(file -b "$BOOT_SOURCE" | tr '[:upper:]' '[:lower:]')
   fi
 
@@ -505,14 +522,69 @@ fi
 
 # Carry separate AP boot-chain images unchanged when present. These may hold
 # the device DTB or vendor ramdisk and cannot be replaced by a universal GSI
-# system image. The matching AP is the only safe source for them. Recovery is
-# included as well because a partial custom AP should not accidentally discard
-# the exact recovery image used by the firmware/kernel combination.
+# system image. Prefer matching files from an explicitly supplied exact-device
+# boot bundle, then fall back to the matching AP. Recovery is included as well
+# because a partial custom AP should not accidentally discard the exact
+# recovery image used by the firmware/kernel combination.
+find_override_aux() {
+  local wanted="$1"
+  local source
+  for source in "${BOOT_OVERRIDE_AUX_SOURCES[@]}"; do
+    if [ "$(basename "$source")" = "$wanted" ] \
+      || [ "$(basename "$source")" = "${wanted%.lz4}" ]; then
+      printf '%s' "$source"
+      return 0
+    fi
+  done
+  return 1
+}
+
+copy_auxiliary_image() {
+  local source="$1"
+  local destination="$2"
+  case "$source" in
+    *.lz4)
+      cp -- "$source" "$OUTPUT_DIR/$destination"
+      ;;
+    *.img)
+      lz4 -f -B6 --content-size "$source" "$OUTPUT_DIR/$destination" >/dev/null
+      ;;
+    *)
+      echo "[-] ERROR: Unsupported auxiliary boot image: $source" >&2
+      exit 1
+      ;;
+  esac
+}
+
+declare -A AUX_BOOT_SEEN=()
 for AP_AUX_BOOT_SOURCE in "${AP_AUX_BOOT_SOURCES[@]}"; do
   AUX_BOOT_NAME=$(basename "$AP_AUX_BOOT_SOURCE")
-  cp -- "$AP_AUX_BOOT_SOURCE" "$OUTPUT_DIR/$AUX_BOOT_NAME"
+  AUX_BOOT_SOURCE="$AP_AUX_BOOT_SOURCE"
+  if OVERRIDE_AUX=$(find_override_aux "$AUX_BOOT_NAME"); then
+    AUX_BOOT_SOURCE="$OVERRIDE_AUX"
+    echo "==> [SAMSUNG-SUPER] Using exact-device auxiliary boot image: $AUX_BOOT_NAME"
+  fi
+  copy_auxiliary_image "$AUX_BOOT_SOURCE" "$AUX_BOOT_NAME"
   ODIN_MEMBERS+=("$AUX_BOOT_NAME")
   AUX_BOOT_NAMES+=("$AUX_BOOT_NAME")
+  AUX_BOOT_SEEN["$AUX_BOOT_NAME"]=1
+done
+
+# Include auxiliary members supplied only by the exact-device boot bundle.
+# This lets a custom kernel package add vendor_boot/init_boot/dtbo when the
+# stock AP did not contain that member, without fabricating hardware data.
+for OVERRIDE_AUX_SOURCE in "${BOOT_OVERRIDE_AUX_SOURCES[@]}"; do
+  AUX_BOOT_NAME=$(basename "$OVERRIDE_AUX_SOURCE")
+  if [[ "$AUX_BOOT_NAME" != *.lz4 ]]; then
+    AUX_BOOT_NAME="${AUX_BOOT_NAME}.lz4"
+  fi
+  if [ -n "${AUX_BOOT_SEEN[$AUX_BOOT_NAME]:-}" ]; then
+    continue
+  fi
+  copy_auxiliary_image "$OVERRIDE_AUX_SOURCE" "$AUX_BOOT_NAME"
+  ODIN_MEMBERS+=("$AUX_BOOT_NAME")
+  AUX_BOOT_NAMES+=("$AUX_BOOT_NAME (exact-device override)")
+  AUX_BOOT_SEEN["$AUX_BOOT_NAME"]=1
 done
 
 if [ "$VBMETA_READY" = "1" ]; then

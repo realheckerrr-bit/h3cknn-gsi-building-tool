@@ -166,6 +166,30 @@ fi
 grep -F 'Removed logical partitions: product' \
   "$TEST_DIR/output-ap/smoke-ap.build-info.txt" >/dev/null
 
+# An exact-device custom boot bundle must carry its matching auxiliary boot
+# chain instead of silently mixing it with stock AP members.
+mkdir -p "$TEST_DIR/boot-override"
+cp "$TEST_DIR/ap/boot.img.lz4" "$TEST_DIR/boot-override/boot.img.lz4"
+printf 'custom matching vendor ramdisk\n' > "$TEST_DIR/boot-override/vendor_boot.img"
+tar -cf "$TEST_DIR/custom-boot-bundle.tar" -C "$TEST_DIR/boot-override" \
+  boot.img.lz4 vendor_boot.img
+mkdir -p "$TEST_DIR/output-ap-override"
+SAMSUNG_DEVICE_MODEL=SM-TEST \
+SAMSUNG_REMOVE_PRODUCT=1 \
+SAMSUNG_BOOT_INPUT="$TEST_DIR/custom-boot-bundle.tar" \
+  bash "$ROOT_DIR/scripts/build_samsung_super.sh" \
+    "$TEST_DIR/ap.tar" \
+    "$TEST_DIR/gsi.img" \
+    smoke-ap-override \
+    "$TEST_DIR/work-ap-override" \
+    "$TEST_DIR/output-ap-override"
+bash "$ROOT_DIR/scripts/verify_samsung_package.sh" \
+  "$TEST_DIR/output-ap-override" smoke-ap-override >/dev/null
+tar -tf "$TEST_DIR/output-ap-override/smoke-ap-override-odin.tar" \
+  | grep -Fx 'vendor_boot.img.lz4' >/dev/null
+lz4 -dc "$TEST_DIR/output-ap-override/vendor_boot.img.lz4" \
+  | grep -Fx 'custom matching vendor ramdisk' >/dev/null
+
 # With no boot_url, the exact stock AP boot image is carried automatically.
 mkdir -p "$TEST_DIR/output-ap-auto"
 SAMSUNG_DEVICE_MODEL=SM-M127F \
