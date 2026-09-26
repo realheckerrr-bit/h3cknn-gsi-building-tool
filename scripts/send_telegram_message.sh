@@ -29,8 +29,8 @@ HTTP_STATUS=$(curl --silent --show-error \
 
 if [ "$HTTP_STATUS" != "200" ]; then
   echo "Telegram notification failed (HTTP ${HTTP_STATUS:-unknown})." >&2
-  if [ "$HTTP_STATUS" = "401" ]; then
-    echo "The bot token is invalid or revoked; rotate it with BotFather and update the TELEGRAM_BOT_TOKEN repository secret." >&2
+  if [ "$HTTP_STATUS" = "401" ] || [ "$HTTP_STATUS" = "404" ]; then
+    echo "The bot token is invalid, revoked, or the Bot API endpoint was not found; rotate it with BotFather and update the TELEGRAM_BOT_TOKEN repository secret." >&2
   elif [ "$HTTP_STATUS" = "400" ]; then
     echo "Telegram rejected the message; check TELEGRAM_CHAT_ID and HTML markup." >&2
   fi
