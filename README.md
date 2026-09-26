@@ -127,8 +127,12 @@ BL/CP/CSC package available; a factory reset and the device-specific
 multidisabler/kernel procedure may still be required. For Exynos 850 Android
 14+ installations that need a custom kernel, use the workflow's optional
 `boot_url` input with an exact-device `boot.img.lz4`; it overrides the stock
-boot extracted from the AP. Never use a boot image from another model or
-firmware binary.
+boot extracted from the AP. An exact-device boot archive may also contain
+matching `vendor_boot.img.lz4`, `dtbo.img.lz4`, `init_boot.img.lz4`, or
+`recovery.img.lz4`; those auxiliary images are carried with the boot image so
+the package does not silently mix a custom kernel with incompatible stock boot
+chain files. Never use a boot image or auxiliary boot-chain file from another
+model or firmware binary.
 
 The resulting `.tar` remains device-specific. Follow the matching Samsung
 recovery, multidisabler, data-format, and kernel procedure. A package made

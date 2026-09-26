@@ -30,7 +30,7 @@ on:
           - "img.gz"
           - "img"
       boot_url:
-        description: "Optional exact-device boot.img.lz4/boot.img or archive (for a GSI-compatible kernel)"
+        description: "Optional exact-device boot.img.lz4/boot.img or kernel archive; matching vendor_boot/dtbo/init_boot/recovery are carried when present"
         required: false
         default: ""
         type: string
