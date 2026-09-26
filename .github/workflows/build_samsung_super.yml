@@ -181,9 +181,8 @@ jobs:
           fi
           TEXT=$(printf '<b>%s Samsung Super GSI</b>\n<a href="%s">Open GitHub Release</a>\n\n<blockquote expandable><b>Build info</b>\n%s\n</blockquote>' \
             "$NAME_ESCAPED" "$RELEASE_URL" "$BUILD_INFO_ESCAPED")
-          curl --fail --silent --show-error --request POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=${TEXT}" || \
-            echo "::warning::Telegram notification failed."
+          printf '%s' "$TEXT" > workspace/output/telegram-message.html
+          bash scripts/send_telegram_message.sh \
+            "$TELEGRAM_BOT_TOKEN" \
+            "$TELEGRAM_CHAT_ID" \
+            workspace/output/telegram-message.html

@@ -214,10 +214,8 @@ jobs:
             "$TELEGRAM_BUILD_TYPE_ESCAPED" "$TELEGRAM_MANIFEST_BRANCH_ESCAPED" \
             "$TELEGRAM_TREBLE_BRANCH_ESCAPED" "$TELEGRAM_TARGET_MODEL_ESCAPED" \
             "$TELEGRAM_COMPATIBILITY" "$GITHUB_SHA")
-          if ! curl --fail --silent --show-error --request POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=${TELEGRAM_TEXT}"; then
-            echo "::warning::Telegram notification failed. Check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID secrets."
-          fi
+          printf '%s' "$TELEGRAM_TEXT" > android_source/out_gsi/telegram-message.html
+          bash scripts/send_telegram_message.sh \
+            "$TELEGRAM_BOT_TOKEN" \
+            "$TELEGRAM_CHAT_ID" \
+            android_source/out_gsi/telegram-message.html

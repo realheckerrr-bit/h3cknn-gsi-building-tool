@@ -297,10 +297,7 @@ jobs:
             echo "Telegram secrets are not configured; skipping notification."
             exit 0
           fi
-          if ! curl --fail --silent --show-error --request POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=$(cat workspace/output/telegram-message.html)"; then
-            echo "::warning::Telegram notification failed. Check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID secrets."
-          fi
+          bash scripts/send_telegram_message.sh \
+            "$TELEGRAM_BOT_TOKEN" \
+            "$TELEGRAM_CHAT_ID" \
+            workspace/output/telegram-message.html
