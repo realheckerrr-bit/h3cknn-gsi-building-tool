@@ -60,4 +60,8 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends \
             android-sdk-libsparse-utils android-libbase-dev e2fsprogs liblz4-tool p7zip-full
           bash scripts/install_lpmake.sh
+          FORCE_LPMAKE_REINSTALL=1 \
+          LPMake_FORCE_SOURCE_INDEX=2 \
+            bash scripts/install_lpmake.sh
+          lpmake --help >/dev/null
           bash scripts/test_samsung_super.sh

@@ -3,7 +3,9 @@
 
 set -Eeuo pipefail
 
-if command -v lpmake >/dev/null 2>&1 && lpmake --help >/dev/null 2>&1; then
+if [ "${FORCE_LPMAKE_REINSTALL:-0}" != "1" ] \
+  && command -v lpmake >/dev/null 2>&1 \
+  && lpmake --help >/dev/null 2>&1; then
   echo "  [+] lpmake already present: $(command -v lpmake)"
   exit 0
 fi
@@ -54,6 +56,10 @@ trap 'rm -rf -- "$TEMP_DIR"' EXIT
 echo "==> [SETUP] Installing verified AOSP lpmake..."
 LPMake_READY=0
 for i in "${!LPMake_URLS[@]}"; do
+  if [ -n "${LPMake_FORCE_SOURCE_INDEX:-}" ] \
+    && [ "$i" != "$LPMake_FORCE_SOURCE_INDEX" ]; then
+    continue
+  fi
   rm -f -- "$TEMP_DIR/lpmake.b64" "$TEMP_FILE"
   echo "  -> Trying pinned AOSP lpmake source $((i + 1))/${#LPMake_URLS[@]}..."
   if ! curl --fail --silent --show-error --location \
