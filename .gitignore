@@ -13,6 +13,10 @@ out_gsi/
 
 # Ccache & temporary files
 .ccache/
+.venv/
+mysticgsi/.venv/
+mysticgsi/tmp/
+mysticgsi/out/
 *.swp
 *~
 .DS_Store

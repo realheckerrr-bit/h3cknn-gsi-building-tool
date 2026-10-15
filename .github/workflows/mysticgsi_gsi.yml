@@ -1,0 +1,111 @@
+name: "MysticGSI Firmware to GSI"
+
+on:
+  workflow_dispatch:
+    inputs:
+      rom_url:
+        description: "Direct firmware URL or local-style workflow input supported by MysticGSI"
+        required: true
+        type: string
+      output_name:
+        description: "Short output name (letters, numbers, dot, dash, underscore)"
+        required: true
+        default: "MysticGSI_Build"
+        type: string
+      rom_type:
+        description: "MysticGSI ROM type; auto is recommended"
+        required: true
+        default: "auto"
+        type: string
+      target_model:
+        description: "Optional target model for compatibility warnings"
+        required: false
+        default: "generic"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository and MysticGSI
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Free runner disk space
+        run: bash scripts/clean_disk.sh
+
+      - name: Install host dependencies
+        run: bash scripts/setup_deps.sh
+
+      - name: Install MysticGSI Python dependencies
+        run: |
+          python3 -m pip install --break-system-packages -r mysticgsi/requirements.txt \
+            2>/dev/null || python3 -m pip install -r mysticgsi/requirements.txt
+
+      - name: Build with MysticGSI
+        env:
+          ROM_URL_INPUT: ${{ inputs.rom_url }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          ROM_TYPE_INPUT: ${{ inputs.rom_type }}
+          TARGET_MODEL_INPUT: ${{ inputs.target_model }}
+        run: |
+          chmod +x scripts/build_mysticgsi.sh scripts/*.sh
+          bash scripts/build_mysticgsi.sh \
+            "$ROM_URL_INPUT" \
+            "$OUTPUT_NAME_INPUT" \
+            "$ROM_TYPE_INPUT" \
+            "$TARGET_MODEL_INPUT"
+
+      - name: Validate output and create checksums
+        run: |
+          bash scripts/validate_gsi_output.sh \
+            workspace/output/*.img.xz \
+            workspace/output/*.img.gz
+          cd workspace/output
+          sha256sum *.img.xz *.img.gz > SHA256SUMS.txt
+          echo "RELEASE_TAG=mysticgsi-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.output_name }}-MysticGSI
+          path: |
+            workspace/output/*.img
+            workspace/output/*.img.xz
+            workspace/output/*.img.gz
+            workspace/output/SHA256SUMS.txt
+            workspace/output/build-info.txt
+            workspace/output/compatibility-report.txt
+          retention-days: 14
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "${{ inputs.output_name }} MysticGSI build"
+          body: |
+            ## MysticGSI firmware-to-GSI build
+
+            - **Source**: `${{ inputs.rom_url }}`
+            - **ROM type**: `${{ inputs.rom_type }}`
+            - **Target model**: `${{ inputs.target_model }}`
+            - **Engine**: pinned MysticGSI submodule
+            - **Runner**: Ubuntu 24.04
+
+            The GSI contains system userspace only. Keep the exact target
+            vendor, kernel/boot, DTB, vbmeta, recovery, and device-specific
+            installation procedure.
+          files: |
+            workspace/output/*.img
+            workspace/output/*.img.xz
+            workspace/output/*.img.gz
+            workspace/output/SHA256SUMS.txt
+            workspace/output/build-info.txt
+            workspace/output/compatibility-report.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,4 @@
+[submodule "mysticgsi"]
+	path = mysticgsi
+	url = https://github.com/MysticGSI/mysticgsi.git
+	branch = main

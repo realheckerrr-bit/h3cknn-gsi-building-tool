@@ -159,6 +159,17 @@ If either secret is absent, the workflow skips Telegram without failing the buil
 
 t.me/h3cknnGSI
 
+## MysticGSI upstream backend
+
+This repository now pins the working [MysticGSI](https://github.com/MysticGSI/mysticgsi)
+engine as the `mysticgsi/` submodule. The **MysticGSI Firmware to GSI** workflow
+uses that upstream extractor and patch engine for payloads, fastboot packages,
+dynamic partitions, Samsung tars, Huawei packages, and other supported firmware.
+It publishes the raw image plus `.img.xz` and DSU-compatible `.img.gz` assets.
+
+The existing OEM, source-build, and Samsung packaging workflows remain available;
+the new workflow is the recommended path when MysticGSI supports the input firmware.
+
 ## ⚡ How to Flash the Resulting GSI
 
 ### Samsung Galaxy M12 / Samsung devices
